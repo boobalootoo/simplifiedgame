@@ -6,11 +6,11 @@
     <title>Species Identification</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Silkscreen&display=swap');
-        
+
         body {
-            font-family: 'Silkscreen', sans-serif;
-            background-color: black;
-            color: cyan;
+            font-family: 'Silkscreen', cursive;
+            background-color: skyblue;
+            color: forestgreen;
             text-align: center;
         }
         .container {
@@ -19,33 +19,42 @@
             align-items: center;
         }
         .button {
-            border: 2px solid cyan;
-            background: black;
-            color: cyan;
-            padding: 10px;
+            font-family: 'Silkscreen', cursive;
+            border: 6px solid forestgreen; /* Thicker pixelated border */
+            background: beige; /* Creamy buttons */
+            color: forestgreen;
+            padding: 12px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 18px;
             margin: 5px;
+            box-shadow: 4px 4px forestgreen; /* Pixel-style shadow */
         }
         table {
             border-collapse: collapse;
             width: 90%;
             margin-top: 20px;
-            color: cyan;
+            color: forestgreen;
+            background-color: beige; /* Creamy table background */
+            border: 8px solid forestgreen; /* Thicker pixelated border */
+            box-shadow: 6px 6px forestgreen; /* Pixel-style shadow */
         }
         th, td {
-            border: 1px solid cyan;
-            padding: 10px;
+            font-family: 'Silkscreen', cursive;
+            border: 6px solid forestgreen; /* Thicker pixelated borders */
+            padding: 12px;
             text-align: center;
+            background-color: beige; /* Creamy table cells */
         }
         th:nth-child(2), td:nth-child(2) {
             width: 10px; /* Makes the Picture column as narrow as possible */
         }
         input, button {
-            background: black;
-            color: cyan;
-            border: 1px solid cyan;
-            padding: 5px;
+            font-family: 'Silkscreen', cursive;
+            background: #9CAF88; /* Sage green input fields */
+            color: forestgreen;
+            border: 6px solid forestgreen; /* Thicker pixelated border */
+            padding: 8px;
+            box-shadow: 3px 3px forestgreen; /* Pixel-style shadow */
         }
     </style>
 </head>
@@ -54,7 +63,7 @@
         <table>
             <tr>
                 <th>Username</th>
-                <th>Picture</th>
+                <th></th>
                 <th>Species Name</th>
                 <th>Date</th>
                 <th>Place</th>

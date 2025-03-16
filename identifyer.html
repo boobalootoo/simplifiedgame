@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,14 +17,6 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-        }
-        .box {
-            border: 2px solid cyan;
-            padding: 20px;
-            margin: 10px;
-            display: inline-block;
-            width: 400px;
-            height: 200px;
         }
         .button {
             border: 2px solid cyan;
@@ -57,15 +48,9 @@
 </head>
 <body>
     <div class="container">
-        <h1>SPECIES IDENTIFICATION</h1>
-        <div class="box"></div>
-        <button class="button">TOGGLE PIXELATION</button>
-        <button class="button" onclick="openCamera(this)">📷 TAKE PHOTO</button>
-        
         <table>
             <tr>
                 <th>Username</th>
-                <th>Picture</th>
                 <th>Species Name</th>
                 <th>Date</th>
                 <th>Place</th>
@@ -74,11 +59,6 @@
             <tbody id="species-records">
                 <tr>
                     <td><input type="text" placeholder="Enter username"></td>
-                    <td>
-                        <input type="file" accept="image/*">
-                        <br>
-                        <button onclick="openCamera(this)">Use Camera</button>
-                    </td>
                     <td><input type="text" placeholder="Species you think it is"></td>
                     <td><input type="text" class="date" placeholder="Enter manually"> <button onclick="getDate(this)">USE DEVICE DATE</button></td>
                     <td><input type="text" class="place" placeholder="Enter manually"> <button onclick="getLocation(this)">USE DEVICE LOCATION</button></td>

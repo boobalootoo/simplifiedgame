@@ -17,68 +17,71 @@
   <style>
     body {
       margin: 0;
-      padding: 0;
-      background-color: #000;
-      color: #fff;
+      padding-top: 30px; /* Added buffer at the top */
+      background-color: skyblue;
+      color: forestgreen;
       text-align: center;
       font-family: 'Silkscreen', cursive;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
-    h1 {
-      margin: 20px 0 10px;
-    }
     .container {
-      display: grid;
-      grid-template-columns: 200px 600px 200px;
-      grid-template-rows: auto auto;
+      display: flex;
+      justify-content: center;
       gap: 20px;
       width: 90%;
       max-width: 1200px;
+      align-items: flex-start;
     }
-    .section {
+    .sidebar {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      background-color: rgba(0, 255, 204, 0.2);
+      background-color: beige;
       padding: 10px;
-      border-radius: 10px;
-      min-height: 200px;
-      width: 200px;
-    }
-    .controls, .section {
+      border: 6px solid forestgreen;
+      box-shadow: 6px 6px forestgreen;
+      min-width: 200px;
       text-align: center;
     }
-    button {
-      border: 2px solid #00ffcc;
-      background: transparent;
-      color: #00ffcc;
-      border-radius: 10px;
-      padding: 10px 20px;
-      font-size: 14px;
+    .button {
+      font-family: 'Silkscreen', cursive;
+      border: 6px solid forestgreen;
+      background: beige;
+      color: forestgreen;
+      padding: 12px;
       cursor: pointer;
-      margin: 5px;
+      font-size: 16px;
+      box-shadow: 4px 4px forestgreen;
     }
-    button:hover {
-      background-color: #00ffcc;
-      color: #000;
-    }
-    .collapsible-content {
-      display: none;
-      flex-direction: column;
-      gap: 5px;
-      margin-top: 5px;
-    }
-    .collapsible.active + .collapsible-content {
+    .controls {
       display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      text-align: center;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    input[type="range"] {
+      width: 250px;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 10px;
+      background: beige;
+      border: 6px solid forestgreen;
+      box-shadow: 4px 4px forestgreen;
+      outline: none;
     }
     #mapContainer {
       width: 600px;
       height: 600px;
-      border: 2px solid #00ffcc;
+      border: 8px solid forestgreen;
+      box-shadow: 6px 6px forestgreen;
       position: relative;
       overflow: hidden;
+      background-color: beige;
     }
     #map {
       width: 100%;
@@ -94,76 +97,52 @@
       width: 100%;
       height: 100%;
       pointer-events: none;
-      display: none;
       z-index: 2;
     }
   </style>
 </head>
 <body>
-  <h1>MY PIXEL WORLD</h1>
   <div class="container">
-    <div>
-      <div class="section">
-        <h2>Fellow Travellers</h2>
-        <button onclick="window.location.href='https://boobalootoo.github.io/PIXELFDONOTEDIT/friendsmap.html'">Friends maps</button>
-        <button>Add friend</button>
-        <button>Battle</button>
-        <button>Invite friends</button>
-        <button>Share your discoveries</button>
-        <button>My profile</button>
-        <button>QR</button>
-        <button>My stats</button>
-      </div>
-      <div class="section">
-        <h2>My Sightings</h2>
-        <button>Challenges</button>
-        <button>Progress</button>
-      </div>
+    <!-- Left Sidebar -->
+    <div class="sidebar">
+      <h2>FELLOW TRAVELLERS</h2>
+      <button class="button" onclick="window.location.href='https://boobalootoo.github.io/PIXELFDONOTEDIT/friendsmap.html'">Friends maps</button>
     </div>
+
+    <!-- Map Container -->
     <div>
-      <div class="controls">
-        <button id="toggleOverlay">Toggle Pixelation Overlay</button>
-        <button id="zoomIn">X10 ZOOM IN</button>
-        <button id="zoomOut">X10 ZOOM OUT</button>
-        <button id="undo">UNDO</button>
-        <button id="grid10">10x10 Grid</button>
-        <button id="grid100">100x100 Grid</button>
-        <button id="grid1000">1000x1000 Grid</button>
-      </div>
       <div id="mapContainer">
         <div id="map"></div>
         <canvas id="canvas"></canvas>
       </div>
+      <div class="controls">
+        <label for="gridSize">Pixelation Level:</label>
+        <input type="range" id="gridSize" min="10" max="100" step="10" value="10">
+        <span id="gridLabel">10x10</span>
+      </div>
     </div>
-    <div>
-      <div class="section">
-        <h2>Inventory</h2>
-        <button class="collapsible">Unlocked minigames</button>
-        <div class="collapsible-content">
-          <button onclick="window.location.href='https://boobalootoo.github.io/conkersminigame/'">Conkers</button>
-          <button>Foodweb Game</button>
-          <button onclick="window.location.href='https://boobalootoo.github.io/runaroundDONOTEDIT/'">Runaround</button>
-<button onclick="window.location.href='https://boobalootoo.github.io/BLOX3Dviewerfirstdraft/'">BLOX 3D Viewer</button>
-<button onclick="window.location.href='https://boobalootoo.github.io/murmerationwithbackground/'">Murmuration</button>
-<button onclick="window.location.href='https://boobalootoo.github.io/webgame/'">Web Game</button>
-<button onclick="window.location.href='https://boobalootoo.github.io/CARDDECKDONOTEDIT/'">Card Deck</button>
-<button onclick="window.location.href='https://boobalootoo.github.io/8BITGALLERY2/'">8-Bit Gallery</button>
-        </div>
-      </div>
-      <div class="section">
-        <h2>My Wishlist</h2>
-        <button>Where are they?</button>
-      </div>
+
+    <!-- Right Sidebar -->
+    <div class="sidebar">
+      <h2>INVENTORY</h2>
+      <button class="button">Unlocked minigames</button>
+      <button class="button" onclick="window.location.href='https://boobalootoo.github.io/conkersminigame/'">Conkers</button>
+      <button class="button">Foodweb Game</button>
+      <button class="button" onclick="window.location.href='https://boobalootoo.github.io/runaroundDONOTEDIT/'">Runaround</button>
+      <button class="button" onclick="window.location.href='https://boobalootoo.github.io/BLOX3Dviewerfirstdraft/'">BLOX 3D Viewer</button>
+      <button class="button" onclick="window.location.href='https://boobalootoo.github.io/murmerationwithbackground/'">Murmuration</button>
+      <button class="button" onclick="window.location.href='https://boobalootoo.github.io/webgame/'">Web Game</button>
+      <button class="button" onclick="window.location.href='https://boobalootoo.github.io/CARDDECKDONOTEDIT/'">Card Deck</button>
+      <button class="button" onclick="window.location.href='https://boobalootoo.github.io/8BITGALLERY2/'">8-Bit Gallery</button>
     </div>
   </div>
 
   <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    const toggleButton = document.getElementById('toggleOverlay');
-    let overlayVisible = false;
-    let zoomLocked = false;
-    let gridSize = 10;
+    const gridSizeSlider = document.getElementById('gridSize');
+    const gridLabel = document.getElementById('gridLabel');
+    let gridSize = parseInt(gridSizeSlider.value);
 
     const map = L.map('map', {
         center: [54.5, -2.5],
@@ -187,13 +166,12 @@
         html2canvas(document.getElementById('map'), { useCORS: true }).then((capturedCanvas) => {
             ctx.drawImage(capturedCanvas, 0, 0, canvas.width, canvas.height);
 
-            const pixelSizeX = Math.floor(canvas.width / gridSize);
-            const pixelSizeY = Math.floor(canvas.height / gridSize);
+            const pixelSize = Math.min(canvas.width, canvas.height) / gridSize;
 
-            for (let y = 0; y < canvas.height; y += pixelSizeY) {
-                for (let x = 0; x < canvas.width; x += pixelSizeX) {
-                    let width = Math.min(pixelSizeX, canvas.width - x);
-                    let height = Math.min(pixelSizeY, canvas.height - y);
+            for (let y = 0; y < canvas.height; y += pixelSize) {
+                for (let x = 0; x < canvas.width; x += pixelSize) {
+                    let width = Math.min(pixelSize, canvas.width - x);
+                    let height = Math.min(pixelSize, canvas.height - y);
 
                     const imageData = ctx.getImageData(x, y, width, height);
                     const data = imageData.data;
@@ -206,32 +184,21 @@
                         count++;
                     }
 
-                    r = Math.floor(r / count);
-                    g = Math.floor(g / count);
-                    b = Math.floor(b / count);
-
-                    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                    ctx.fillStyle = `rgb(${Math.floor(r / count)}, ${Math.floor(g / count)}, ${Math.floor(b / count)})`;
                     ctx.fillRect(x, y, width, height);
                 }
             }
+            canvas.style.display = "block";
         });
     }
 
-    toggleButton.addEventListener('click', () => {
-        overlayVisible = !overlayVisible;
-        canvas.style.display = overlayVisible ? 'block' : 'none';
-        if (overlayVisible) applyPixelation();
+    gridSizeSlider.addEventListener('input', () => {
+        gridSize = parseInt(gridSizeSlider.value);
+        gridLabel.textContent = `${gridSize}x${gridSize}`;
+        applyPixelation();
     });
 
-    document.getElementById('grid10').addEventListener('click', () => { gridSize = 10; applyPixelation(); });
-    document.getElementById('grid100').addEventListener('click', () => { gridSize = 100; applyPixelation(); });
-    document.getElementById('grid1000').addEventListener('click', () => { gridSize = 1000; applyPixelation(); });
-
-    document.querySelectorAll(".collapsible").forEach(button => {
-        button.addEventListener("click", () => {
-            button.classList.toggle("active");
-        });
-    });
+    applyPixelation();
   </script>
 </body>
 </html>

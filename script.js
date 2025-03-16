@@ -28,16 +28,22 @@ document.addEventListener("DOMContentLoaded", function() {
 
     table.addEventListener("click", function(event) {
         if (event.target.classList.contains("submit-btn")) {
-            const row = event.target.closest("tr");
-            const username = row.cells[0].querySelector("input").value || null;
-            const deviceID = getDeviceID();
-            const image = row.cells[1].querySelector("input[type=file]").files[0]?.name || "No image";
-            const species = row.cells[2].querySelector("input").value;
-            const date = row.cells[3].querySelector("input").value;
-            const place = row.cells[4].querySelector("input").value;
+            console.log("Submit button clicked!"); // Debugging
 
-            const identifier = deviceID; // Always use deviceID for tracking, separate from username
-            const record = { username, deviceID: identifier, image, species, date, place };
+            const row = event.target.closest("tr");
+            const username = row.cells[0].querySelector("input").value.trim();
+            const species = row.cells[1].querySelector("input").value.trim();
+            const date = row.cells[2].querySelector("input").value.trim();
+            const place = row.cells[3].querySelector("input").value.trim();
+
+            // Ensure all fields are filled
+            if (!username || !species || !date || !place) {
+                alert("Please fill in all fields before submitting.");
+                return;
+            }
+
+            const deviceID = getDeviceID();
+            const record = { username, deviceID, species, date, place };
             saveRecord(record);
         } else if (event.target.classList.contains("date-btn")) {
             getDate(event.target);
@@ -48,14 +54,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Function to add a new row
     addRowBtn.addEventListener("click", function() {
+        console.log("Adding a new row"); // Debugging
         const newRow = document.createElement("tr");
         newRow.innerHTML = `
             <td><input type="text" placeholder="Enter username"></td>
-            <td>
-                <input type="file" accept="image/*">
-                <br>
-                <button class="button camera-btn" onclick="openCamera(this)">Use Camera</button>
-            </td>
             <td><input type="text" placeholder="Species you think it is"></td>
             <td><input type="text" class="date" placeholder="Enter manually"> <button class="button date-btn">USE DEVICE DATE</button></td>
             <td><input type="text" class="place" placeholder="Enter manually"> <button class="button location-btn">USE DEVICE LOCATION</button></td>
@@ -79,16 +81,4 @@ function getLocation(button) {
     } else {
         alert("Geolocation is not supported by this browser.");
     }
-}
-
-// Function to use the camera for image capture
-function openCamera(button) {
-    const fileInput = document.createElement("input");
-    fileInput.type = "file";
-    fileInput.accept = "image/*";
-    fileInput.capture = "environment";
-    fileInput.onchange = function() {
-        button.previousElementSibling.files = fileInput.files;
-    };
-    fileInput.click();
 }

@@ -20,7 +20,7 @@
         }
         .button {
             font-family: 'Silkscreen', cursive;
-            border: 6px solid forestgreen; /* Thicker pixelated border */
+            border: 6px solid forestgreen;
             background: beige; /* Creamy buttons */
             color: forestgreen;
             padding: 12px;
@@ -37,6 +37,9 @@
             background-color: beige; /* Creamy table background */
             border: 8px solid forestgreen; /* Thicker pixelated border */
             box-shadow: 6px 6px forestgreen; /* Pixel-style shadow */
+        }
+        thead {
+            background-color: beige; /* Match header with table */
         }
         th, td {
             font-family: 'Silkscreen', cursive;
@@ -61,14 +64,16 @@
 <body>
     <div class="container">
         <table>
-            <tr>
-                <th>Username</th>
-                <th></th>
-                <th>Species Name</th>
-                <th>Date</th>
-                <th>Place</th>
-                <th>Submit</th>
-            </tr>
+            <thead> <!-- Moved header inside <thead> -->
+                <tr>
+                    <th>Username</th>
+                    <th>Picture</th> <!-- Explicitly named instead of empty -->
+                    <th>Species Name</th>
+                    <th>Date</th>
+                    <th>Place</th>
+                    <th>Submit</th>
+                </tr>
+            </thead>
             <tbody id="species-records">
                 <tr>
                     <td><input type="text" placeholder="Enter username"></td>

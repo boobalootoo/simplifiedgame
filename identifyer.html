@@ -21,66 +21,66 @@
         .button {
             font-family: 'Silkscreen', cursive;
             border: 6px solid forestgreen;
-            background: beige; /* Creamy buttons */
+            background: beige;
             color: forestgreen;
             padding: 12px;
             cursor: pointer;
             font-size: 18px;
             margin: 5px;
-            box-shadow: 4px 4px forestgreen; /* Pixel-style shadow */
+            box-shadow: 4px 4px forestgreen;
         }
         table {
             border-collapse: collapse;
             width: 90%;
             margin-top: 20px;
             color: forestgreen;
-            background-color: beige; /* Creamy table background */
-            border: 8px solid forestgreen; /* Thicker pixelated border */
-            box-shadow: 6px 6px forestgreen; /* Pixel-style shadow */
+            background-color: beige;
+            border: 8px solid forestgreen;
+            box-shadow: 6px 6px forestgreen;
         }
         thead {
-            background-color: beige; /* Match header with table */
+            background-color: beige;
         }
         th, td {
             font-family: 'Silkscreen', cursive;
-            border: 6px solid forestgreen; /* Thicker pixelated borders */
+            border: 6px solid forestgreen;
             padding: 12px;
             text-align: center;
-            background-color: beige; /* Creamy table cells */
+            background-color: beige;
         }
         th:nth-child(2), td:nth-child(2) {
-            width: 10px; /* Makes the Picture column as narrow as possible */
+            width: 10px;
         }
         input, button {
             font-family: 'Silkscreen', cursive;
-            background: #9CAF88; /* Sage green input fields */
+            background: #9CAF88;
             color: forestgreen;
-            border: 6px solid forestgreen; /* Thicker pixelated border */
+            border: 6px solid forestgreen;
             padding: 8px;
-            box-shadow: 3px 3px forestgreen; /* Pixel-style shadow */
+            box-shadow: 3px 3px forestgreen;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <table>
-            <thead> <!-- Moved header inside <thead> -->
+            <thead>
                 <tr>
-                    <th>Username</th>
-                    <th>Picture</th> <!-- Explicitly named instead of empty -->
-                    <th>Species Name</th>
-                    <th>Date</th>
-                    <th>Place</th>
-                    <th>Submit</th>
+                    <th>USERNAME</th>
+                    <th></th> <!-- Empty column for spacing -->
+                    <th>SPECIES NAME</th>
+                    <th>DATE</th>
+                    <th>PLACE</th>
+                    <th>SUBMIT</th>
                 </tr>
             </thead>
             <tbody id="species-records">
                 <tr>
                     <td><input type="text" placeholder="Enter username"></td>
-                    <td></td> <!-- Empty Picture Column -->
+                    <td></td> <!-- Empty column remains for spacing -->
                     <td><input type="text" placeholder="Species you think it is"></td>
-                    <td><input type="text" class="date" placeholder="Enter manually"> <button onclick="getDate(this)">USE DEVICE DATE</button></td>
-                    <td><input type="text" class="place" placeholder="Enter manually"> <button onclick="getLocation(this)">USE DEVICE LOCATION</button></td>
+                    <td><input type="text" class="date" placeholder="Enter manually"> <button class="button date-btn" onclick="getDate(this)">USE DEVICE DATE</button></td>
+                    <td><input type="text" class="place" placeholder="Enter manually"> <button class="button location-btn" onclick="getLocation(this)">USE DEVICE LOCATION</button></td>
                     <td><button class="button submit-btn">SUBMIT</button></td>
                 </tr>
             </tbody>
@@ -88,6 +88,79 @@
         <button class="button add-row">ADD ROW</button>
         <button class="button" onclick="window.location.href='map.html';">GO STRAIGHT TO MAP</button>
     </div>
-    <script src="script.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const table = document.getElementById("species-records");
+            const addRowBtn = document.querySelector(".add-row");
+
+            // Event listener for submit button
+            table.addEventListener("click", function(event) {
+                if (event.target.classList.contains("submit-btn")) {
+                    console.log("Submit button clicked!");
+
+                    const row = event.target.closest("tr");
+                    const username = row.cells[0].querySelector("input").value.trim() || "Unknown";
+                    const species = row.cells[2].querySelector("input").value.trim() || "Not specified";
+                    const date = row.cells[3].querySelector("input").value.trim() || "No date";
+                    const place = row.cells[4].querySelector("input").value.trim() || "Unknown location";
+
+                    const record = { username, species, date, place };
+                    console.log("Submitting record:", record);
+
+                    fetch("https://script.google.com/macros/s/AKfycbwsG06dGQsqT_22efWAZn9RtadK3JKAoINByzP1KLosycvC-Mv2q0S6Se4fdA84tF9pTw/exec", {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(record)
+                    })
+                    .then(() => alert("Data submitted successfully!"))
+                    .catch(error => console.error("Error:", error));
+                }
+            });
+
+            // Add new row function
+            addRowBtn.addEventListener("click", function() {
+                console.log("Adding a new row");
+                const newRow = document.createElement("tr");
+
+                newRow.innerHTML = `
+                    <td><input type="text" placeholder="Enter username"></td>
+                    <td></td>
+                    <td><input type="text" placeholder="Species you think it is"></td>
+                    <td>
+                        <input type="text" class="date" placeholder="Enter manually">
+                        <button class="button date-btn" onclick="getDate(this)">USE DEVICE DATE</button>
+                    </td>
+                    <td>
+                        <input type="text" class="place" placeholder="Enter manually">
+                        <button class="button location-btn" onclick="getLocation(this)">USE DEVICE LOCATION</button>
+                    </td>
+                    <td><button class="button submit-btn">SUBMIT</button></td>
+                `;
+
+                // Apply the same styles as the first row
+                newRow.style.border = "6px solid forestgreen";
+                newRow.style.backgroundColor = "beige";
+                table.appendChild(newRow);
+            });
+
+            // Function to get the current date
+            window.getDate = function(button) {
+                button.previousElementSibling.value = new Date().toISOString().split("T")[0];
+            };
+
+            // Function to get the device location
+            window.getLocation = function(button) {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        button.previousElementSibling.value = `Lat: ${position.coords.latitude}, Lon: ${position.coords.longitude}`;
+                    });
+                } else {
+                    alert("Geolocation is not supported by this browser.");
+                }
+            };
+        });
+    </script>
 </body>
 </html>

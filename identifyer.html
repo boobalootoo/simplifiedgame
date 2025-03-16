@@ -38,6 +38,9 @@
             padding: 10px;
             text-align: center;
         }
+        th:nth-child(2), td:nth-child(2) {
+            width: 10px; /* Makes the Picture column as narrow as possible */
+        }
         input, button {
             background: black;
             color: cyan;
@@ -51,6 +54,7 @@
         <table>
             <tr>
                 <th>Username</th>
+                <th>Picture</th>
                 <th>Species Name</th>
                 <th>Date</th>
                 <th>Place</th>
@@ -59,6 +63,7 @@
             <tbody id="species-records">
                 <tr>
                     <td><input type="text" placeholder="Enter username"></td>
+                    <td></td> <!-- Empty Picture Column -->
                     <td><input type="text" placeholder="Species you think it is"></td>
                     <td><input type="text" class="date" placeholder="Enter manually"> <button onclick="getDate(this)">USE DEVICE DATE</button></td>
                     <td><input type="text" class="place" placeholder="Enter manually"> <button onclick="getLocation(this)">USE DEVICE LOCATION</button></td>

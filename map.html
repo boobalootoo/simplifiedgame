@@ -17,7 +17,7 @@
   <style>
     body {
       margin: 0;
-      padding-top: 30px; /* Added buffer at the top */
+      padding-top: 30px; /* Buffer at the top */
       background-color: skyblue;
       color: forestgreen;
       text-align: center;
@@ -144,6 +144,7 @@
     const gridLabel = document.getElementById('gridLabel');
     let gridSize = parseInt(gridSizeSlider.value);
 
+    // Initialize Leaflet map (fully interactive)
     const map = L.map('map', {
         center: [54.5, -2.5],
         zoom: 6,
@@ -198,6 +199,7 @@
         applyPixelation();
     });
 
+    map.on("moveend zoomend", applyPixelation);
     applyPixelation();
   </script>
 </body>

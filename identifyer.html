@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Species Identification</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Silkscreen&display=swap');
+        
+        body {
+            font-family: 'Silkscreen', sans-serif;
+            background-color: black;
+            color: cyan;
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .box {
+            border: 2px solid cyan;
+            padding: 20px;
+            margin: 10px;
+            display: inline-block;
+            width: 400px;
+            height: 200px;
+        }
+        .button {
+            border: 2px solid cyan;
+            background: black;
+            color: cyan;
+            padding: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 90%;
+            margin-top: 20px;
+            color: cyan;
+        }
+        th, td {
+            border: 1px solid cyan;
+            padding: 10px;
+            text-align: center;
+        }
+        input, button {
+            background: black;
+            color: cyan;
+            border: 1px solid cyan;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SPECIES IDENTIFICATION</h1>
+        <div class="box"></div>
+        <button class="button">TOGGLE PIXELATION</button>
+        <button class="button" onclick="openCamera(this)">📷 TAKE PHOTO</button>
+        
+        <table>
+            <tr>
+                <th>Username</th>
+                <th>Picture</th>
+                <th>Species Name</th>
+                <th>Date</th>
+                <th>Place</th>
+                <th>Submit</th>
+            </tr>
+            <tbody id="species-records">
+                <tr>
+                    <td><input type="text" placeholder="Enter username"></td>
+                    <td>
+                        <input type="file" accept="image/*">
+                        <br>
+                        <button onclick="openCamera(this)">Use Camera</button>
+                    </td>
+                    <td><input type="text" placeholder="Species you think it is"></td>
+                    <td><input type="text" class="date" placeholder="Enter manually"> <button onclick="getDate(this)">USE DEVICE DATE</button></td>
+                    <td><input type="text" class="place" placeholder="Enter manually"> <button onclick="getLocation(this)">USE DEVICE LOCATION</button></td>
+                    <td><button class="button submit-btn">SUBMIT</button></td>
+                </tr>
+            </tbody>
+        </table>
+        <button class="button add-row">ADD ROW</button>
+        <button class="button" onclick="window.location.href='map.html';">GO STRAIGHT TO MAP</button>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MY PIXEL WORLD</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <!-- html2canvas for pixelation overlay -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- Silkscreen font -->
+  <link href="https://fonts.googleapis.com/css2?family=Silkscreen&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #000;
+      color: #fff;
+      text-align: center;
+      font-family: 'Silkscreen', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin: 20px 0 10px;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 200px 600px 200px;
+      grid-template-rows: auto auto;
+      gap: 20px;
+      width: 90%;
+      max-width: 1200px;
+    }
+    .section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background-color: rgba(0, 255, 204, 0.2);
+      padding: 10px;
+      border-radius: 10px;
+      min-height: 200px;
+      width: 200px;
+    }
+    .controls, .section {
+      text-align: center;
+    }
+    button {
+      border: 2px solid #00ffcc;
+      background: transparent;
+      color: #00ffcc;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 14px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background-color: #00ffcc;
+      color: #000;
+    }
+    .collapsible-content {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: 5px;
+    }
+    .collapsible.active + .collapsible-content {
+      display: flex;
+    }
+    #mapContainer {
+      width: 600px;
+      height: 600px;
+      border: 2px solid #00ffcc;
+      position: relative;
+      overflow: hidden;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0; left: 0;
+      z-index: 1;
+    }
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: none;
+      z-index: 2;
+    }
+  </style>
+</head>
+<body>
+  <h1>MY PIXEL WORLD</h1>
+  <div class="container">
+    <div>
+      <div class="section">
+        <h2>Fellow Travellers</h2>
+        <button onclick="window.location.href='https://boobalootoo.github.io/PIXELFDONOTEDIT/friendsmap.html'">Friends maps</button>
+        <button>Add friend</button>
+        <button>Battle</button>
+        <button>Invite friends</button>
+        <button>Share your discoveries</button>
+        <button>My profile</button>
+        <button>QR</button>
+        <button>My stats</button>
+      </div>
+      <div class="section">
+        <h2>My Sightings</h2>
+        <button>Challenges</button>
+        <button>Progress</button>
+      </div>
+    </div>
+    <div>
+      <div class="controls">
+        <button id="toggleOverlay">Toggle Pixelation Overlay</button>
+        <button id="zoomIn">X10 ZOOM IN</button>
+        <button id="zoomOut">X10 ZOOM OUT</button>
+        <button id="undo">UNDO</button>
+        <button id="grid10">10x10 Grid</button>
+        <button id="grid100">100x100 Grid</button>
+        <button id="grid1000">1000x1000 Grid</button>
+      </div>
+      <div id="mapContainer">
+        <div id="map"></div>
+        <canvas id="canvas"></canvas>
+      </div>
+    </div>
+    <div>
+      <div class="section">
+        <h2>Inventory</h2>
+        <button class="collapsible">Unlocked minigames</button>
+        <div class="collapsible-content">
+          <button onclick="window.location.href='https://boobalootoo.github.io/conkersminigame/'">Conkers</button>
+          <button>Foodweb Game</button>
+          <button onclick="window.location.href='https://boobalootoo.github.io/runaroundDONOTEDIT/'">Runaround</button>
+<button onclick="window.location.href='https://boobalootoo.github.io/BLOX3Dviewerfirstdraft/'">BLOX 3D Viewer</button>
+<button onclick="window.location.href='https://boobalootoo.github.io/murmerationwithbackground/'">Murmuration</button>
+<button onclick="window.location.href='https://boobalootoo.github.io/webgame/'">Web Game</button>
+<button onclick="window.location.href='https://boobalootoo.github.io/CARDDECKDONOTEDIT/'">Card Deck</button>
+<button onclick="window.location.href='https://boobalootoo.github.io/8BITGALLERY2/'">8-Bit Gallery</button>
+        </div>
+      </div>
+      <div class="section">
+        <h2>My Wishlist</h2>
+        <button>Where are they?</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const toggleButton = document.getElementById('toggleOverlay');
+    let overlayVisible = false;
+    let zoomLocked = false;
+    let gridSize = 10;
+
+    const map = L.map('map', {
+        center: [54.5, -2.5],
+        zoom: 6,
+        maxZoom: 25,
+        minZoom: 6,
+        layers: [
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles © Esri — Source: Esri, Airbus, USGS, etc.',
+                maxNativeZoom: 18
+            })
+        ]
+    });
+
+    function applyPixelation() {
+        const size = map.getSize();
+        canvas.width = size.x;
+        canvas.height = size.y;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        html2canvas(document.getElementById('map'), { useCORS: true }).then((capturedCanvas) => {
+            ctx.drawImage(capturedCanvas, 0, 0, canvas.width, canvas.height);
+
+            const pixelSizeX = Math.floor(canvas.width / gridSize);
+            const pixelSizeY = Math.floor(canvas.height / gridSize);
+
+            for (let y = 0; y < canvas.height; y += pixelSizeY) {
+                for (let x = 0; x < canvas.width; x += pixelSizeX) {
+                    let width = Math.min(pixelSizeX, canvas.width - x);
+                    let height = Math.min(pixelSizeY, canvas.height - y);
+
+                    const imageData = ctx.getImageData(x, y, width, height);
+                    const data = imageData.data;
+                    let r = 0, g = 0, b = 0, count = 0;
+
+                    for (let i = 0; i < data.length; i += 4) {
+                        r += data[i];
+                        g += data[i + 1];
+                        b += data[i + 2];
+                        count++;
+                    }
+
+                    r = Math.floor(r / count);
+                    g = Math.floor(g / count);
+                    b = Math.floor(b / count);
+
+                    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                    ctx.fillRect(x, y, width, height);
+                }
+            }
+        });
+    }
+
+    toggleButton.addEventListener('click', () => {
+        overlayVisible = !overlayVisible;
+        canvas.style.display = overlayVisible ? 'block' : 'none';
+        if (overlayVisible) applyPixelation();
+    });
+
+    document.getElementById('grid10').addEventListener('click', () => { gridSize = 10; applyPixelation(); });
+    document.getElementById('grid100').addEventListener('click', () => { gridSize = 100; applyPixelation(); });
+    document.getElementById('grid1000').addEventListener('click', () => { gridSize = 1000; applyPixelation(); });
+
+    document.querySelectorAll(".collapsible").forEach(button => {
+        button.addEventListener("click", () => {
+            button.classList.toggle("active");
+        });
+    });
+  </script>
+</body>
+</html>

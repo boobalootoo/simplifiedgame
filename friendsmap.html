@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MY PIXEL WORLD</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <!-- Google Sheets API -->
+  <script src="https://apis.google.com/js/api.js"></script>
+  <!-- Silkscreen font -->
+  <link href="https://fonts.googleapis.com/css2?family=Silkscreen&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #000;
+      color: #fff;
+      text-align: center;
+      font-family: 'Silkscreen', cursive;
+    }
+    #map {
+      width: 600px;
+      height: 600px;
+      border: 2px solid #00ffcc;
+      margin: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>MY PIXEL WORLD</h1>
+  <label for="userFilter">Filter by User:</label>
+  <select id="userFilter">
+    <option value="all">All Users</option>
+  </select>
+  <div id="map"></div>
+
+  <script>
+    const map = L.map('map').setView([54.5, -2.5], 6);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles \u00a9 Esri, Airbus, USGS, etc.',
+      maxNativeZoom: 18
+    }).addTo(map);
+
+    let allRecords = [];
+
+    function fetchSpreadsheetData() {
+      const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTdvKUCvQATP7Aidi5tbZQMuI8rmUMi7hZk13-QSBYeVTycGz1sGT8cJaWeGCrifLRLRcsY4t2SswKu/pub?gid=0&single=true&output=csv";
+      fetch(sheetURL)
+        .then(response => response.text())
+        .then(csv => processCSV(csv));
+    }
+
+    function processCSV(csv) {
+      const rows = csv.split("\n").map(row => row.split(","));
+      console.log("CSV Data:", rows);  // Debugging output
+      const headers = rows.shift();
+      console.log("Headers:", headers); // Check column headers
+
+      const speciesIndex = 3; // Column D (Species Name)
+      const userIndex = 1; // Column B (User)
+      const locationIndex = 5; // Column F (Lat & Lng together)
+
+      console.log("Column Indexes:", { speciesIndex, userIndex, locationIndex });
+
+      allRecords = rows.map(row => {
+          let locationData = row[locationIndex].replace(/['"\r]/g, "").split(/\s+|\t+/); // Remove extra spaces, tabs, quotes
+          let lat = parseFloat(locationData[0]);
+          let lng = parseFloat(locationData[1]);
+
+          return {
+              species: row[speciesIndex].trim(),
+              user: row[userIndex].trim(),
+              lat: lat,
+              lng: lng
+          };
+      }).filter(record => !isNaN(record.lat) && !isNaN(record.lng));
+
+      console.log("Parsed Records:", allRecords);
+      populateUserFilter();
+      updateMap();
+    }
+
+    function populateUserFilter() {
+      const userFilter = document.getElementById("userFilter");
+      const users = [...new Set(allRecords.map(r => r.user))];
+      users.forEach(user => {
+        const option = document.createElement("option");
+        option.value = user;
+        option.textContent = user;
+        userFilter.appendChild(option);
+      });
+    }
+
+    function updateMap() {
+      const userFilter = document.getElementById("userFilter").value;
+      map.eachLayer(layer => {
+        if (layer instanceof L.Marker) {
+          map.removeLayer(layer);
+        }
+      });
+      
+      allRecords.forEach(record => {
+        if (userFilter === "all" || record.user === userFilter) {
+          L.marker([record.lat, record.lng])
+            .bindPopup(`<strong>${record.species}</strong><br>User: ${record.user}`)
+            .addTo(map);
+        }
+      });
+    }
+    
+    document.getElementById("userFilter").addEventListener("change", updateMap);
+    fetchSpreadsheetData();
+  </script>
+</body>
+</html>

@@ -1,1 +1,264 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Map</title>
 
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #87CEEB;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        #map-container {
+            background-color: #0B6623;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
+            width: 70vh;
+            height: 70vh;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .red-marker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 25px;
+            height: 25px;
+            background-color: red;
+            border: 2px solid black;
+            border-radius: 3px;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .dynamic-marker {
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .marker-popup {
+            padding: 10px;
+            max-width: 300px;
+        }
+        
+        .marker-group {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-bottom: 1px solid #ccc;
+        }
+        
+        .marker-group:last-child {
+            border-bottom: none;
+        }
+        
+        .coordinates {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .species-info {
+            color: #2c3e50;
+            margin: 5px 0;
+        }
+        
+        .date-info {
+            color: #7f8c8d;
+            font-style: italic;
+            margin-bottom: 5px;
+        }
+        
+        .group-count {
+            background-color: #f0f0f0;
+            padding: 5px;
+            border-radius: 3px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            console.log("Starting map initialization...");
+
+            var map = L.map('map').setView([25.1242671, 55.3520156], 10);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            let markers = [];
+            let markerIcons = {};
+            let markerData = {};
+
+            console.log("Setting up marker overlap detection...");
+            
+            function areMarkersOverlapping(marker1, marker2, zoomLevel) {
+                const pixelDistance = Math.pow(2, 20 - zoomLevel) * 0.5;
+                return marker1.getLatLng().distanceTo(marker2.getLatLng()) <= pixelDistance;
+            }
+
+            function getOverlappingMarkers(index, zoomLevel) {
+                const overlaps = [];
+                markers.forEach((marker, i) => {
+                    if (i !== index && areMarkersOverlapping(markers[index], marker, zoomLevel)) {
+                        overlaps.push(i);
+                    }
+                });
+                return overlaps;
+            }
+
+            function formatCoordinates(lat, lon) {
+                return `<strong>Lat:</strong> ${lat.toFixed(5)}, <strong>Lon:</strong> ${lon.toFixed(5)}`;
+            }
+
+            function updateMarkerCounts() {
+                const zoomLevel = map.getZoom();
+                console.log(`Updating marker counts at zoom level ${zoomLevel}`);
+                
+                const overlaps = {};
+                markers.forEach((marker1, i) => {
+                    overlaps[i] = [];
+                    markers.forEach((marker2, j) => {
+                        if (i !== j && areMarkersOverlapping(marker1, marker2, zoomLevel)) {
+                            overlaps[i].push(j);
+                        }
+                    });
+                });
+
+                markers.forEach((marker, i) => {
+                    const count = overlaps[i].length + 1;
+                    const iconHtml = `<div class="red-marker">${count > 1 ? count : ''}</div>`;
+                    markerIcons[i].options.html = iconHtml;
+                    marker.setIcon(markerIcons[i]);
+                    
+                    const popupContent = createPopupContent(i, overlaps[i], zoomLevel);
+                    marker.bindPopup(popupContent, { 
+                        className: 'marker-popup',
+                        autoPan: true,
+                        maxWidth: 400
+                    });
+                });
+            }
+
+            function createPopupContent(mainIndex, overlappingIndices, zoomLevel) {
+                let content = '<div class="marker-group">';
+                
+                const mainMarker = markers[mainIndex];
+                const mainCoords = mainMarker.getLatLng();
+                const mainData = markerData[mainIndex];
+                
+                content += `
+                    <div class="coordinates">${formatCoordinates(mainCoords.lat, mainCoords.lng)}</div>
+                    <div class="species-info">Species: ${mainData.species}</div>
+                    <div class="date-info">Date: ${mainData.date}</div>
+                    <div class="group-count">Part of group: ${(overlappingIndices.length + 1)} markers</div>
+                `;
+                
+                overlappingIndices.forEach(index => {
+                    const marker = markers[index];
+                    const coords = marker.getLatLng();
+                    const data = markerData[index];
+                    content += `
+                        <div class="marker-group">
+                            <div class="coordinates">${formatCoordinates(coords.lat, coords.lng)}</div>
+                            <div class="species-info">Species: ${data.species}</div>
+                            <div class="date-info">Date: ${data.date}</div>
+                        </div>
+                    `;
+                });
+                
+                content += '</div>';
+                return content;
+            }
+
+            console.log("Loading marker data from CSV...");
+            fetch('https://docs.google.com/spreadsheets/d/1vuS0aLlvltu2viuA2NBP2om0Hn04cVg_bm7LN-MeHYI/export?format=csv&gid=0')
+                .then(response => {
+                    console.log("CSV data received");
+                    return response.text();
+                })
+                .then(csvText => {
+                    console.log("Parsing CSV data...");
+                    const rows = csvText.split("\n").slice(1);
+                    const markerPositions = [];
+
+                    rows.forEach(row => {
+                        let latMatch = row.match(/Lat:\s*([\d.-]+),\s*Lon:\s*([\d.-]+)/);
+                        if (latMatch) {
+                            const lat = parseFloat(latMatch[1]);
+                            const lon = parseFloat(latMatch[2]);
+                            const species = row.split(',')[3].trim(); // Column D
+                            const date = row.split(',')[4].trim(); // Column E
+
+                            if (!isNaN(lat) && !isNaN(lon)) {
+                                markerPositions.push([lat, lon]);
+                                markerData[markerPositions.length - 1] = {
+                                    lat: lat,
+                                    lon: lon,
+                                    species: species,
+                                    date: date
+                                };
+                            }
+                        }
+                    });
+
+                    console.log(`Creating ${markerPositions.length} markers...`);
+                    markerPositions.forEach(([lat, lon]) => {
+                        const customIcon = L.divIcon({
+                            className: 'dynamic-marker',
+                            html: '<div class="red-marker"></div>',
+                            iconSize: [25, 25],
+                            iconAnchor: [12, 12]
+                        });
+                        
+                        const marker = L.marker([lat, lon], { 
+                            icon: customIcon,
+                            riseOnHover: true 
+                        }).addTo(map);
+                        
+                        markerIcons[markers.length] = customIcon;
+                        markers.push(marker);
+                    });
+
+                    console.log("Initializing marker counts...");
+                    updateMarkerCounts();
+
+                    console.log("Setting up event listeners...");
+                    map.on('zoomend moveend', updateMarkerCounts);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error loading map data. Please check the console for details.');
+                });
+        });
+    </script>
+</body>
+</html>

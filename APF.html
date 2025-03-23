@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Animal, Plant, Fungi List</title>
+<style>
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  border: 1px solid black;
+  padding: 8px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+th {
+  background-color: #f2f2f2;
+}
+
+img {
+  width: 50px; /* Adjust size as needed */
+  height: auto;
+  margin-right: 8px;
+}
+
+.cell-content {
+  display: flex;
+  align-items: center;
+}
+</style>
+</head>
+<body>
+
+<h2>Animal, Plant, Fungi List</h2>
+
+<table id="speciesTable">
+  <tr>
+    <th>Animal</th>
+    <th>Plant</th>
+    <th>Fungi</th>
+  </tr>
+  <!-- Table rows will be inserted here by JavaScript -->
+</table>
+
+<script>
+// CSV data (your full CSV data goes here)
+const csvData = `
+Animal,Plant,Fungi
+Alpine Newt,Bluebell,Death Cap Mushroom
+American mink,Bird’s-foot Trefoil,Fly Agaric Mushroom
+Balearic Shearwater,Blackthorn,Jelly Ear Fungus
+Banded Demoiselle,Bluebell,Orange Peel Fungus
+bank vole,Bramble,Panther Cap Mushroom
+barbastelle bat,Broom,Scarlet Elf Cup Fungus
+Barn Owl,Bugle,Shaggy Inkcap Mushroom
+bat,Cat’s-ear,Stinkhorn Fungus
+Bearded Tit,Common Bistort,
+Beautiful Demoiselle,Common Blackbird,
+Bechsteins bat,Common Blue Butterfly,
+bottlenose dolphin,Common Centaury,
+Brambling,Common Chickweed,
+Brandts bat,Common Dog Violet,
+Broad-bodied Chaser,Common Fleabane,
+brown long-eared bat,Common Hawthorn,
+brown rat,Common Hemp-nettle,
+Buff-tailed Bumblebee,Common Honeysuckle,
+Carrion Crow,Common Knapweed,
+Cave Spider,Common Mallow,
+Chaffinch,Common Milkwort,
+Chinese water deer,Common Mouse-ear,
+Coal Tit,Common Poppy,
+Collared Dove,Common Ragwort,
+Comma Butterfly,Common Spotted Orchid,
+Common Blackbird,Common Toadflax,
+Common Blue Butterfly,Common Valerian,
+Common Crab Spider,Common Water-crowfoot,
+Common Crossbill,Corn Bunting,
+Common Darter Dragonfly,Corn Marigold,
+Common Dolphin,Cornflower,
+Common Fox Spider,Cuckooflower,
+Common Frog,Daisy,
+Common Kingfisher,Dandelion,
+Common Linnet,Dogwood,
+Common Lizard,Elder,
+Common Moorhen,English Oak,
+Common Redshank,Eyebright,
+Common Sandpiper,Field Scabious,
+common shrew,Foxglove,
+Common Snipe,Germander Speedwell,
+Common Swift,Great Burnet,
+Common Toad,Great Willowherb,
+common vole,Greater Knapweed,
+Common Wood Pigeon,Greater Plantain,
+Cormorant,Greater Stitchwort,
+Corncrake,Green Alkanet,
+coypu,Harebell,
+Cuckoo,Hedge Bindweed,
+deer family,Herb Robert,
+Devils Coach Horse,Hogweed,
+domestic cat,Lady’s Bedstraw,
+domestic ferret,Lesser Celandine,
+domestic goat,Marsh Cinquefoil,
+Dusky Warbler,Marsh Horsetail,
+Edible Frog,Marsh Violet,
+elephants,Marsh Woundwort,
+Emperor Dragonfly,Marsh-marigold,
+Eurasian beaver,Meadow Buttercup,
+Eurasian Blackbird,Meadow Crane’s-bill,
+Eurasian Curlew,Meadow Pipit,
+Eurasian Magpie,Meadow Vetchling,
+Eurasian water shrew,Meadowsweet,
+Eurasian Wren,Primrose,
+European Adder,Purple Loosestrife,
+European badger,Red Campion,
+European Garden Spider,Red Dead-nettle,
+European Goldfinch,Sea Holly,
+European Greenfinch,Selfheal,
+European hare,Silver Birch,
+European hedgehog,Silverweed,
+European mole,Sneezewort,
+European Nightjar,Spearmint,
+European otter,Stinging Nettle,
+European polecat,Thrift (Sea Pink),
+European rabbit,Water Mint,
+European Robin,White Dead-nettle,
+European Starling,Wild Angelica,
+European Stonechat,Wild Basil,
+European water vole,Wild Carrot,
+European wildcat,Wild Clary,
+fallow deer,Wild Garlic (Crow Garlic),
+False Black Widow Spider,Wild Garlic (Ramsons),
+Fen Raft Spider,Wild Marjoram,
+ferret_polecat hybrid,Wild Pansy (Heartsease),
+field vole,Wild Parsnip,
+Firecrest,Wild Radish,
+Foxglove,Wild Strawberry,
+Goldfinch,Wild Thyme,
+Grass Snake,Wood Anemone,
+Great Crested Grebe,Wood Avens,
+Great Crested Newt,Wood Sorrel,
+Great Spotted Woodpecker,Yarrow,
+Great Tit,Yellow Archangel,
+greater horseshoe bat,Yellow Flag Iris,
+greater white-toothed shrew,Yellow Rattle,
+Grey Heron,,
+grey seal,,
+Hammock-web Spider,,
+harbour porpoise,,
+harbour seal,,
+harvest mouse,,
+hazel dormouse,,
+Hen Harrier,,
+Holly Blue Butterfly,,
+house mouse,,
+House Sparrow,,
+humpback whale,,
+Irish hare,,
+Jackdaw,,
+Kestrel,,
+Lace Web Spider,,
+Large Red Damselfly,,
+Leislers bat,,
+lesser horseshoe bat,,
+lesser white-toothed shrew,,
+Little Egret,,
+Little Owl,,
+Little Tern,,
+long-eared bats,,
+Long-tailed Tit,,
+Mallard Duck,,
+mammals,,
+Marmalade Hoverfly,,
+Marsh Frog,,
+Marsh Harrier,,
+Meadow Pipit,,
+mice and rats,,
+mice genus,,
+Migrant Hawker Dragonfly,,
+minke whale,,
+mountain hare,,
+mouse-eared bats,,
+Mute Swan,,
+Nathusius pipistrelle,,
+Natterer's bat,,
+Natterjack Toad,,
+noctule bat,,
+noctule bats,,
+noctule_serotine bat group,,
+Northern Lapwing,,
+Northern Wheatear,,
+oceanic dolphins,,
+Painted Lady Butterfly,,
+Pallas's Warbler,,
+Palmate Newt,,
+Peacock Butterfly,,
+Peregrine Falcon,,
+Pied Wagtail,,
+pine marten,,
+pipistrelle bat genus,,
+Pomarine Skua,,
+pygmy shrew,,
+Raft Spider,,
+Red Admiral Butterfly,,
+red deer,,
+red fox,,
+Red Kite,,
+red squirrel,,
+Red-backed Shrike,,
+Red-flanked Bluetail,,
+red-necked wallaby,,
+Red-tailed Bumblebee,,
+Red-throated Diver,,
+Redwing,,
+Reed Bunting,,
+Reeves's muntjac,,
+Ring Ouzel,,
+Rissos dolphin,,
+roe deer,,
+Rook,,
+Roseate Tern,,
+Running Crab Spider,,
+Rustic Bunting,,
+Sand Lizard,,
+Sand Martin,,
+Serin
+`;
+
+// Function to parse CSV and populate the table
+function populateTable(csvData) {
+  const table = document.getElementById('speciesTable');
+  const rows = csvData.trim().split('\n');
+  
+  // Iterate through each CSV row
+  rows.forEach((row, index) => {
+    if (index === 0) return; // Skip the header row
+    const columns = row.split(',');
+    const tr = document.createElement('tr');
+    
+    // Create a cell for Animal, Plant, and Fungi
+    columns.forEach(col => {
+      const td = document.createElement('td');
+      const speciesName = col.trim();
+
+      // Create the image element and set the source path
+      const img = document.createElement('img');
+      const encodedName = encodeURIComponent(speciesName);
+      img.src = `https://raw.githubusercontent.com/boobalootoo/simplifiedgame/main/images/${encodedName}.png`; // Image URL
+      img.alt = speciesName;
+
+      // Fallback mechanism: If the image fails to load, display the species name
+      img.onerror = function() {
+        img.style.display = 'none'; // Hide image if not found
+        const text = document.createElement('span');
+        text.textContent = speciesName; // Always show species name
+        td.appendChild(text);
+      };
+
+      // Create a container for image and name
+      const cellContent = document.createElement('div');
+      cellContent.classList.add('cell-content');
+      cellContent.appendChild(img);
+
+      // If image loads successfully, append image + name
+      img.onload = function() {
+        cellContent.appendChild(document.createTextNode(speciesName)); // Add name next to image
+      };
+
+      td.appendChild(cellContent);
+      tr.appendChild(td);
+    });
+    
+    table.appendChild(tr);
+  });
+}
+
+// Call the function to populate the table
+populateTable(csvData);
+</script>
+
+</body>
+</html>

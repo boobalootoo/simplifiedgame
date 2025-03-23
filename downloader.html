@@ -49,36 +49,38 @@
             document.body.appendChild(table);
         }
 
-        function downloadImage(imageUrl, filename) {
-            const a = document.createElement("a");
-            a.href = imageUrl;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+        function downloadImage(imageUrl, filename, delay) {
+            setTimeout(() => {
+                const a = document.createElement("a");
+                a.href = imageUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }, delay);
         }
 
         function downloadVisibleImages() {
-            const rows = document.querySelectorAll("#csvTable tr");
-            rows.forEach(row => {
-                if (row.style.display !== "none") {  // Only process visible rows
-                    const nameCell = row.getElementsByTagName("td")[0];
-                    const imageCell = row.getElementsByTagName("td")[1];
-                    
-                    if (nameCell && imageCell) {
-                        const filename = nameCell.textContent.trim();
-                        const imgElement = imageCell.querySelector("img");
-                        if (imgElement) {
-                            let imageUrl = imgElement.src;
+            const visibleRows = Array.from(document.querySelectorAll("#csvTable tr"))
+                .filter(row => row.style.display !== "none" && row.querySelector("img"));
 
-                            // Ensure we don't append ".png" if it's already there
-                            let finalFilename = filename;
-                            if (!finalFilename.toLowerCase().endsWith(".png")) {
-                                finalFilename += ".png";
-                            }
+            visibleRows.forEach((row, index) => {
+                const nameCell = row.getElementsByTagName("td")[0];
+                const imageCell = row.getElementsByTagName("td")[1];
+                
+                if (nameCell && imageCell) {
+                    const filename = nameCell.textContent.trim();
+                    const imgElement = imageCell.querySelector("img");
 
-                            downloadImage(imageUrl, finalFilename);
+                    if (imgElement) {
+                        let imageUrl = imgElement.src;
+                        let finalFilename = filename;
+
+                        if (!finalFilename.toLowerCase().endsWith(".png")) {
+                            finalFilename += ".png";
                         }
+
+                        downloadImage(imageUrl, finalFilename, index * 500); // 500ms delay per image
                     }
                 }
             });

@@ -49,7 +49,6 @@
             document.body.appendChild(table);
         }
 
-        // Function to download an image
         function downloadImage(imageUrl, filename) {
             const a = document.createElement("a");
             a.href = imageUrl;
@@ -59,19 +58,29 @@
             document.body.removeChild(a);
         }
 
-        // Function to download all images
-        function downloadAllImages() {
-            rows.slice(1).forEach(row => {
-                const imageName = row[1]?.trim().replace(/ /g, "%20");
-                const imageUrl = `https://boobalootoo.github.io/8BITGALLERY2/${imageName}`;
-                let filename = row[0].trim();
+        function downloadVisibleImages() {
+            const rows = document.querySelectorAll("#csvTable tr");
+            rows.forEach(row => {
+                if (row.style.display !== "none") {  // Only process visible rows
+                    const nameCell = row.getElementsByTagName("td")[0];
+                    const imageCell = row.getElementsByTagName("td")[1];
+                    
+                    if (nameCell && imageCell) {
+                        const filename = nameCell.textContent.trim();
+                        const imgElement = imageCell.querySelector("img");
+                        if (imgElement) {
+                            let imageUrl = imgElement.src;
 
-                // Ensure we don't append ".png" if it's already there
-                if (!filename.toLowerCase().endsWith(".png")) {
-                    filename += ".png";
+                            // Ensure we don't append ".png" if it's already there
+                            let finalFilename = filename;
+                            if (!finalFilename.toLowerCase().endsWith(".png")) {
+                                finalFilename += ".png";
+                            }
+
+                            downloadImage(imageUrl, finalFilename);
+                        }
+                    }
                 }
-
-                downloadImage(imageUrl, filename);
             });
         }
 
@@ -94,6 +103,6 @@
     <h1>CSV File Viewer</h1>
     <input type="text" id="searchInput" onkeyup="searchTable()" placeholder="Search first column...">
     <br><br>
-    <button onclick="downloadAllImages()">Download All Images</button>
+    <button onclick="downloadVisibleImages()">Download Visible Images</button>
 </body>
 </html>

@@ -54,7 +54,9 @@
             const a = document.createElement("a");
             a.href = imageUrl;
             a.download = filename;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
         }
 
         // Function to download all images
@@ -62,7 +64,13 @@
             rows.slice(1).forEach(row => {
                 const imageName = row[1]?.trim().replace(/ /g, "%20");
                 const imageUrl = `https://boobalootoo.github.io/8BITGALLERY2/${imageName}`;
-                const filename = row[0] + ".png";  // Assuming images are PNG, adjust as necessary
+                let filename = row[0].trim();
+
+                // Ensure we don't append ".png" if it's already there
+                if (!filename.toLowerCase().endsWith(".png")) {
+                    filename += ".png";
+                }
+
                 downloadImage(imageUrl, filename);
             });
         }

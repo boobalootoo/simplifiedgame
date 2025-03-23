@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Viewer</title>
+    <script>
+        let table, rows;
+
+        async function loadCSV() {
+            const url = "https://raw.githubusercontent.com/boobalootoo/simplifiedgame/main/imagesandcardsconnected%20-%20Sheet1.csv";
+            const response = await fetch(url);
+            const data = await response.text();
+            
+            rows = data.split("\n").map(row => row.split(","));
+            table = document.createElement("table");
+            table.border = "1";
+            table.id = "csvTable";
+            
+            rows.forEach((row, rowIndex) => {
+                let tr = document.createElement("tr");
+                
+                if (rowIndex === 0) {
+                    let th1 = document.createElement("th");
+                    th1.textContent = row[0] || "";
+                    tr.appendChild(th1);
+                    
+                    let th3 = document.createElement("th");
+                    th3.textContent = "Image";
+                    tr.appendChild(th3);
+                } else {
+                    let td1 = document.createElement("td");
+                    td1.textContent = row[0] || "";
+                    tr.appendChild(td1);
+                    
+                    let td3 = document.createElement("td");
+                    let img = document.createElement("img");
+                    let imageName = row[1]?.trim().replace(/ /g, "%20");
+                    img.src = `https://boobalootoo.github.io/8BITGALLERY2/${imageName}`;
+                    img.alt = "Image";
+                    img.width = 100;
+                    td3.appendChild(img);
+                    tr.appendChild(td3);
+                }
+                
+                table.appendChild(tr);
+            });
+            
+            document.body.appendChild(table);
+        }
+
+        // Function to download an image
+        function downloadImage(imageUrl, filename) {
+            const a = document.createElement("a");
+            a.href = imageUrl;
+            a.download = filename;
+            a.click();
+        }
+
+        // Function to download all images
+        function downloadAllImages() {
+            rows.slice(1).forEach(row => {
+                const imageName = row[1]?.trim().replace(/ /g, "%20");
+                const imageUrl = `https://boobalootoo.github.io/8BITGALLERY2/${imageName}`;
+                const filename = row[0] + ".png";  // Assuming images are PNG, adjust as necessary
+                downloadImage(imageUrl, filename);
+            });
+        }
+
+        function searchTable() {
+            let input = document.getElementById("searchInput").value.toLowerCase();
+            let trs = table.getElementsByTagName("tr");
+            for (let i = 1; i < trs.length; i++) { 
+                let firstCol = trs[i].getElementsByTagName("td")[0];
+                if (firstCol) {
+                    let textValue = firstCol.textContent || firstCol.innerText;
+                    trs[i].style.display = textValue.toLowerCase().includes(input) ? "" : "none";
+                }
+            }
+        }
+        
+        window.onload = loadCSV;
+    </script>
+</head>
+<body>
+    <h1>CSV File Viewer</h1>
+    <input type="text" id="searchInput" onkeyup="searchTable()" placeholder="Search first column...">
+    <br><br>
+    <button onclick="downloadAllImages()">Download All Images</button>
+</body>
+</html>

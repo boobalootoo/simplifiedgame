@@ -12,12 +12,17 @@
             background-color: skyblue;
             color: forestgreen;
             text-align: center;
+            margin: 0;
+            padding: 0;
         }
+
         .container {
             display: flex;
             flex-direction: column;
             align-items: center;
+            width: 100%;
         }
+
         .button {
             font-family: 'Silkscreen', cursive;
             border: 6px solid forestgreen;
@@ -28,29 +33,34 @@
             font-size: 18px;
             margin: 5px;
             box-shadow: 4px 4px forestgreen;
+            width: 100%;
         }
+
         table {
             border-collapse: collapse;
-            width: 90%;
+            width: 100%;
             margin-top: 20px;
             color: forestgreen;
             background-color: beige;
             border: 8px solid forestgreen;
             box-shadow: 6px 6px forestgreen;
+            table-layout: fixed;
         }
+
         thead {
             background-color: beige;
         }
+
         th, td {
             font-family: 'Silkscreen', cursive;
             border: 6px solid forestgreen;
             padding: 12px;
             text-align: center;
             background-color: beige;
+            width: 20%;
+            word-wrap: break-word;
         }
-        th:nth-child(2), td:nth-child(2) {
-            width: 10px;
-        }
+
         input, button {
             font-family: 'Silkscreen', cursive;
             background: #9CAF88;
@@ -58,17 +68,58 @@
             border: 6px solid forestgreen;
             padding: 8px;
             box-shadow: 3px 3px forestgreen;
+            width: 100%;
+            max-width: 300px;
+            box-sizing: border-box;
+        }
+
+        input[type="text"] {
+            max-width: 200px;
+        }
+
+        td input {
+            width: 100%;
+        }
+
+        td button {
+            width: 100%;
+            max-width: 200px;
+            margin: 0;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 600px) {
+            table {
+                width: 100%;
+            }
+
+            th, td {
+                padding: 8px;
+                font-size: 14px;
+            }
+
+            input, button {
+                padding: 6px;
+            }
+
+            .button {
+                font-size: 16px;
+            }
+            
+            td button {
+                width: 100%;
+                max-width: 150px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Form Table -->
         <table>
             <thead>
                 <tr>
                     <th>USERNAME</th>
-                    <th></th> <!-- Empty column for spacing -->
+                    <th></th>
                     <th>SPECIES NAME</th>
                     <th>DATE</th>
                     <th>PLACE</th>
@@ -78,19 +129,23 @@
             <tbody id="species-records">
                 <tr>
                     <td><input type="text" placeholder="Enter username"></td>
-                    <td></td> <!-- Empty column remains for spacing -->
+                    <td></td>
                     <td><input type="text" placeholder="Species you think it is"></td>
-                    <td><input type="text" class="date" placeholder="Enter manually"> <button class="button date-btn" onclick="getDate(this)">USE DEVICE DATE</button></td>
-                    <td><input type="text" class="place" placeholder="Enter manually"> <button class="button location-btn" onclick="getLocation(this)">USE DEVICE LOCATION</button></td>
+                    <td>
+                        <input type="text" class="date" placeholder="Enter manually">
+                        <button class="button date-btn" onclick="getDate(this)">USE DEVICE DATE</button>
+                    </td>
+                    <td>
+                        <input type="text" class="place" placeholder="Enter manually">
+                        <button class="button location-btn" onclick="getLocation(this)">USE DEVICE LOCATION</button>
+                    </td>
                     <td><button class="button submit-btn">SUBMIT</button></td>
                 </tr>
             </tbody>
         </table>
         <button class="button add-row">ADD ROW</button>
         <button class="button" onclick="window.location.href='map.html';">GO STRAIGHT TO MAP</button>
-        
-        <!-- Species List Table -->
-        
+
         <table id="speciesTable">
             <thead>
                 <tr>
@@ -110,7 +165,6 @@
             const table = document.getElementById("species-records");
             const addRowBtn = document.querySelector(".add-row");
 
-            // Event listener for submit button
             table.addEventListener("click", function(event) {
                 if (event.target.classList.contains("submit-btn")) {
                     console.log("Submit button clicked!");
@@ -135,7 +189,6 @@
                 }
             });
 
-            // Add new row function
             addRowBtn.addEventListener("click", function() {
                 console.log("Adding a new row");
                 const newRow = document.createElement("tr");
@@ -154,19 +207,13 @@
                     </td>
                     <td><button class="button submit-btn">SUBMIT</button></td>
                 `;
-
-                // Apply the same styles as the first row
-                newRow.style.border = "6px solid forestgreen";
-                newRow.style.backgroundColor = "beige";
                 table.appendChild(newRow);
             });
 
-            // Function to get the current date
             window.getDate = function(button) {
                 button.previousElementSibling.value = new Date().toISOString().split("T")[0];
             };
 
-            // Function to get the device location
             window.getLocation = function(button) {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(function(position) {
@@ -177,8 +224,7 @@
                 }
             };
 
-            // CSV data (your full CSV data goes here)
-            const csvData = `Animal,Plant,Fungi
+            const csvData = `
 Alpine Newt,Bluebell,Death Cap Mushroom
 American mink,Bird’s-foot Trefoil,Fly Agaric Mushroom
 Balearic Shearwater,Blackthorn,Jelly Ear Fungus
@@ -356,43 +402,35 @@ Rustic Bunting,,
 Sand Lizard,,
 Sand Martin,,
 Serin,,`;
+            const speciesList = document.getElementById("speciesTable").getElementsByTagName("tbody")[0];
 
-            // Function to parse CSV and populate the species list table
-            function populateTable(csvData) {
-                const table = document.getElementById('speciesTable');
-                const rows = csvData.trim().split('\n');
-                
-                // Iterate through each CSV row
-                rows.forEach((row, index) => {
-                    if (index === 0) return; // Skip the header row
-                    const columns = row.split(',');
-                    const tr = document.createElement('tr');
-                    
-                    // Create a cell for Animal, Plant, and Fungi
-                    columns.forEach((col, idx) => {
-                        const td = document.createElement('td');
-                        const speciesName = col.trim();
-                        td.textContent = speciesName;
-                        
-                        // Insert the image for each species
-                        if (speciesName) {
-                            const img = document.createElement('img');
-                            img.src = `https://boobalootoo.github.io/simplifiedgame/images/${speciesName}.png`;
+            function populateSpeciesTable() {
+                const rows = csvData.split("\n").slice(1);
+                rows.forEach(row => {
+                    const columns = row.split(",");
+                    const newRow = speciesList.insertRow();
+
+                    columns.forEach((column, index) => {
+                        const cell = newRow.insertCell(index);
+                        const speciesName = column.trim();
+
+                        if (index === 0 || index === 1 || index === 2) {
+                            const img = document.createElement("img");
+                            img.src = `https://boobalootoo.github.io/simplifiedgame/images/${speciesName}.png`; // Image path
                             img.alt = speciesName;
-                            img.style.width = "100px"; // Resize images to fit in table cells
-                            img.style.height = "100px";
-                            td.appendChild(img);
+                            img.style.width = "50px";
+                            img.style.height = "auto";
+                            cell.appendChild(img);
+                            cell.appendChild(document.createElement("br"));
+                            cell.appendChild(document.createTextNode(speciesName));
+                        } else {
+                            cell.textContent = speciesName;
                         }
-
-                        tr.appendChild(td);
                     });
-                    
-                    table.appendChild(tr);
                 });
             }
 
-            // Call the function to populate the table
-            populateTable(csvData);
+            populateSpeciesTable();
         });
     </script>
 </body>

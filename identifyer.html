@@ -111,6 +111,89 @@
                 max-width: 150px;
             }
         }
+
+        /* Styles for the card container */
+        #species-card-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        /* Styles for the card itself */
+        #species-card {
+            width: 200px; /* Reduced width */
+            height: auto;  /* Maintain aspect ratio */
+            border-radius: 8px;
+            text-align: center;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #species-card img{
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* Style for close button */
+        #close-card-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #f00;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #close-card-button:hover {
+             background-color: #ff4500;
+        }
+        
+        /* Autocomplete Styles */
+        .autocomplete {
+            position: relative;
+            display: inline-block;
+        }
+
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid #4CAF50;
+            border-bottom: none;
+            border-top: none;
+            z-index: 1;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #fff;
+        }
+
+        .autocomplete-items div {
+            padding: 10px;
+            cursor: pointer;
+            background-color: #fff;
+            color: #000;
+        }
+
+        .autocomplete-items div:hover {
+            background-color: #4CAF50;
+            color: #fff;
+        }
+
+        .autocomplete-active {
+            background-color: #4CAF50 !important;
+            color: #fff;
+        }
+
     </style>
 </head>
 <body>
@@ -130,7 +213,11 @@
                 <tr>
                     <td><input type="text" placeholder="Enter username"></td>
                     <td></td>
-                    <td><input type="text" placeholder="Species you think it is"></td>
+                    <td>
+                        <div class="autocomplete">
+                            <input type="text" id="speciesInput" placeholder="Species you think it is">
+                        </div>
+                    </td>
                     <td>
                         <input type="text" class="date" placeholder="Enter manually">
                         <button class="button date-btn" onclick="getDate(this)">USE DEVICE DATE</button>
@@ -155,15 +242,29 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- Table rows will be inserted here by JavaScript -->
+                
             </tbody>
         </table>
+        
+        <div id="species-card-container">
+            <div id="species-card">
+                <button id="close-card-button">Close</button>
+                <img id="species-card-img" src="" alt="Species Card">
+                </div>
+        </div>
+
     </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const table = document.getElementById("species-records");
             const addRowBtn = document.querySelector(".add-row");
+            const speciesCardContainer = document.getElementById("species-card-container");
+            const speciesCard = document.getElementById("species-card");
+            const speciesCardImg = document.getElementById("species-card-img");
+            const closeCardButton = document.getElementById("close-card-button");
+            
+            let autocompleteInputValue = "";
 
             table.addEventListener("click", function(event) {
                 if (event.target.classList.contains("submit-btn")) {
@@ -171,7 +272,7 @@
 
                     const row = event.target.closest("tr");
                     const username = row.cells[0].querySelector("input").value.trim() || "Unknown";
-                    const species = row.cells[2].querySelector("input").value.trim() || "Not specified";
+                    const species = autocompleteInputValue || row.cells[2].querySelector("input").value.trim() || "Not specified"; // Use autocomplete value
                     const date = row.cells[3].querySelector("input").value.trim() || "No date";
                     const place = row.cells[4].querySelector("input").value.trim() || "Unknown location";
 
@@ -184,7 +285,45 @@
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(record)
                     })
-                    .then(() => alert("Data submitted successfully!"))
+                    .then(() => {
+                        let speciesNameForURL = species.replace(/ /g, '%20');
+                        const lowerCaseName = speciesNameForURL.toLowerCase();
+                        const capitalizedName = speciesNameForURL.charAt(0).toUpperCase() + speciesNameForURL.slice(1);
+                        const imagePath = `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${capitalizedName}.png`;
+                        const imagePathLower = `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${lowerCaseName}.png`;
+                        const imagePathAllLower = `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${speciesNameForURL.toLowerCase()}.png`;
+                        
+                        // Check if the image exists
+                        const img = new Image();
+                        img.src = imagePath;
+                        img.onload = () => {
+                            speciesCardImg.src = imagePath;
+                            speciesCardImg.alt = species;
+                            speciesCardContainer.style.display = "flex";
+                        };
+                        img.onerror = () => {
+                            const imgLower = new Image();
+                            imgLower.src = imagePathLower;
+                            imgLower.onload = () => {
+                                speciesCardImg.src = imagePathLower;
+                                speciesCardImg.alt = species;
+                                speciesCardContainer.style.display = "flex";
+                            }
+                            imgLower.onerror = () => {
+                                const imgAllLower = new Image();
+                                imgAllLower.src = imagePathAllLower;
+                                imgAllLower.onload = () => {
+                                    speciesCardImg.src = imagePathAllLower;
+                                    speciesCardImg.alt = species;
+                                    speciesCardContainer.style.display = "flex";
+                                }
+                                imgAllLower.onerror = () => {
+                                    alert(`Card for ${species} not found`);
+                                }
+                            }
+                        }
+                        
+                    })
                     .catch(error => console.error("Error:", error));
                 }
             });
@@ -192,11 +331,14 @@
             addRowBtn.addEventListener("click", function() {
                 console.log("Adding a new row");
                 const newRow = document.createElement("tr");
-
                 newRow.innerHTML = `
                     <td><input type="text" placeholder="Enter username"></td>
                     <td></td>
-                    <td><input type="text" placeholder="Species you think it is"></td>
+                    <td>
+                        <div class="autocomplete">
+                            <input type="text" id="speciesInput" placeholder="Species you think it is">
+                        </div>
+                    </td>
                     <td>
                         <input type="text" class="date" placeholder="Enter manually">
                         <button class="button date-btn" onclick="getDate(this)">USE DEVICE DATE</button>
@@ -207,6 +349,8 @@
                     </td>
                     <td><button class="button submit-btn">SUBMIT</button></td>
                 `;
+                const newCell = newRow.cells[2].querySelector("#speciesInput")
+                autocomplete(newCell, speciesNames);
                 table.appendChild(newRow);
             });
 
@@ -403,6 +547,11 @@ Sand Lizard,,
 Sand Martin,,
 Serin,,`;
             const speciesList = document.getElementById("speciesTable").getElementsByTagName("tbody")[0];
+            const speciesNames = csvData.split("\n").slice(1).flatMap(row => {
+                const columns = row.split(",");
+                return columns.map(col => col.trim());
+            }).filter(Boolean);
+
 
             function populateSpeciesTable() {
                 const rows = csvData.split("\n").slice(1);
@@ -416,7 +565,7 @@ Serin,,`;
 
                         if (index === 0 || index === 1 || index === 2) {
                             const img = document.createElement("img");
-                            img.src = `https://boobalootoo.github.io/simplifiedgame/images/${speciesName}.png`; // Image path
+                            img.src = `https://boobalootoo.github.io/simplifiedgame/images/${speciesName}.png`;
                             img.alt = speciesName;
                             img.style.width = "50px";
                             img.style.height = "auto";
@@ -431,6 +580,84 @@ Serin,,`;
             }
 
             populateSpeciesTable();
+            
+            closeCardButton.addEventListener('click', () => {
+                speciesCardContainer.style.display = 'none';
+                speciesCardImg.src = "";
+                speciesCardImg.alt = "";
+            });
+            
+            function autocomplete(inp, arr) {
+              var currentFocus;
+              inp.addEventListener("input", function(e) {
+                var a, b, i, val = this.value;
+                autocompleteInputValue = val;
+                closeAllLists();
+                if (!val) { return false; }
+                currentFocus = -1;
+                a = document.createElement("div");
+                a.setAttribute("id", this.id + "autocomplete-list");
+                a.setAttribute("class", "autocomplete-items");
+                this.parentNode.appendChild(a);
+                for (i = 0; i < arr.length; i++) {
+                  if (arr[i].substr(0, val.length).toUpperCase() == val.toUpperCase()) {
+                    b = document.createElement("div");
+                    b.innerHTML = "<strong>" + arr[i].substr(0, val.length) + "</strong>";
+                    b.innerHTML += arr[i].substr(val.length);
+                    b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
+                    b.addEventListener("click", function(e) {
+                      inp.value = this.getElementsByTagName("input")[0].value;
+                      autocompleteInputValue = this.getElementsByTagName("input")[0].value;
+                      closeAllLists();
+                    });
+                    a.appendChild(b);
+                  }
+                }
+              });
+              inp.addEventListener("keydown", function(e) {
+                var x = document.getElementById(this.id + "autocomplete-list");
+                if (x) x = x.getElementsByTagName("div");
+                if (e.keyCode == 40) {
+                  currentFocus++;
+                  addActive(x);
+                } else if (e.keyCode == 38) {
+                  currentFocus--;
+                  addActive(x);
+                } else if (e.keyCode == 13) {
+                  e.preventDefault();
+                  if (currentFocus > -1) {
+                    if (x) x[currentFocus].click();
+                  }
+                }
+              });
+              function addActive(x) {
+                if (!x) return false;
+                removeActive(x);
+                if (currentFocus >= x.length) currentFocus = 0;
+                if (currentFocus < 0) currentFocus = (x.length - 1);
+                x[currentFocus].classList.add("autocomplete-active");
+              }
+              function removeActive(x) {
+                for (var i = 0; i < x.length; i++) {
+                  x[i].classList.remove("autocomplete-active");
+                }
+              }
+              function closeAllLists(elmnt) {
+                var x = document.getElementsByClassName("autocomplete-items");
+                for (var i = 0; i < x.length; i++) {
+                  if (elmnt != x[i] && elmnt != inp) {
+                    x[i].parentNode.removeChild(x[i]);
+                  }
+                }
+              }
+              document.addEventListener("click", function (e) {
+                closeAllLists(e.target);
+              });
+            }
+            
+            const speciesInput = document.getElementById("speciesInput");
+            autocomplete(speciesInput, speciesNames);
+
         });
     </script>
 </body>

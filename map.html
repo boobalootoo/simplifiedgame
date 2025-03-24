@@ -106,7 +106,7 @@
     <!-- Left Sidebar -->
     <div class="sidebar">
       <h2>FELLOW TRAVELLERS</h2>
-      <button class="button" onclick="window.location.href='https://boobalootoo.github.io/simplifiedgame/friendsmap.html'">Friends maps</button>
+      <button class="button" onclick="window.location.href='https://boobalootoo.github.io/simplifiedgame/friendsmap.html'">Sightings map</button>
     </div>
 
     <!-- Map Container -->
@@ -124,7 +124,6 @@
 
     <!-- Right Sidebar -->
     <div class="sidebar">
-      
       <button class="button" onclick="window.location.href='https://boobalootoo.github.io/conkersminigame/'">Conkers</button>
       <button class="button" onclick="window.location.href='https://boobalootoo.github.io/simplifiedgame/speciessearch.html'">Species Search</button>
       <button class="button" onclick="window.location.href='https://boobalootoo.github.io/runaroundDONOTEDIT/'">Runaround</button>
@@ -155,6 +154,11 @@
                 maxNativeZoom: 18
             })
         ]
+    });
+
+    // Wait for the map tiles to be fully loaded before applying pixelation
+    map.on('load', () => {
+        applyPixelation(); // Apply pixelation after the map has loaded
     });
 
     function applyPixelation() {
@@ -199,7 +203,7 @@
     });
 
     map.on("moveend zoomend", applyPixelation);
-    applyPixelation();
+    // applyPixelation() is now triggered after the map has fully loaded
   </script>
 </body>
 </html>

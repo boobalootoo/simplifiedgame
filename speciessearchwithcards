@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Species Search</title>
+    <script>
+        let table, rows;
+
+        async function loadCSV() {
+            const url = "https://raw.githubusercontent.com/boobalootoo/simplifiedgame/main/imagesandcardsconnected%20-%20Sheet1.csv";
+            const response = await fetch(url);
+            const data = await response.text();
+            
+            rows = data.split("\n").map(row => row.split(","));
+            table = document.createElement("table");
+            table.border = "1";
+            table.id = "csvTable";
+            
+            rows.forEach((row, rowIndex) => {
+                let tr = document.createElement("tr");
+                
+                if (rowIndex === 0) {
+                    // Table headers
+                    let th1 = document.createElement("th");
+                    th1.textContent = "Species Name";
+                    tr.appendChild(th1);
+                    
+                    let th2 = document.createElement("th");
+                    th2.textContent = "Image";
+                    tr.appendChild(th2);
+
+                    let th3 = document.createElement("th");
+                    th3.textContent = "Card";
+                    tr.appendChild(th3);
+                } else {
+                    let speciesName = row[0]?.trim();
+                    let encodedName = encodeURIComponent(speciesName); // Proper encoding for spaces
+                    
+                    // Species name column
+                    let td1 = document.createElement("td");
+                    td1.textContent = speciesName || "";
+                    tr.appendChild(td1);
+                    
+                    // Image column (from simplifiedgame/images/)
+                    let td2 = document.createElement("td");
+                    let img = document.createElement("img");
+                    img.src = `https://boobalootoo.github.io/simplifiedgame/images/${encodedName}`;
+                    img.alt = speciesName;
+                    img.width = 100;
+                    td2.appendChild(img);
+                    tr.appendChild(td2);
+
+                    // Card column (from CARDDECKDONOTEDIT)
+                    let td3 = document.createElement("td");
+                    let cardImg = document.createElement("img");
+                    cardImg.src = `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${encodedName}`;
+                    cardImg.alt = `${speciesName} Card`;
+                    cardImg.width = 100;
+                    td3.appendChild(cardImg);
+                    tr.appendChild(td3);
+                }
+                
+                table.appendChild(tr);
+            });
+            
+            document.body.appendChild(table);
+        }
+        
+        function searchTable() {
+            let input = document.getElementById("searchInput").value.toLowerCase();
+            let trs = table.getElementsByTagName("tr");
+            for (let i = 1; i < trs.length; i++) { 
+                let firstCol = trs[i].getElementsByTagName("td")[0];
+                if (firstCol) {
+                    let textValue = firstCol.textContent || firstCol.innerText;
+                    trs[i].style.display = textValue.toLowerCase().includes(input) ? "" : "none";
+                }
+            }
+        }
+        
+        window.onload = loadCSV;
+    </script>
+</head>
+<body>
+    <h1>Species Search</h1>
+    <input type="text" id="searchInput" onkeyup="searchTable()" placeholder="Search species name...">
+</body>
+</html>

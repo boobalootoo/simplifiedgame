@@ -32,6 +32,10 @@
         .autocomplete-items div { padding: 10px; cursor: pointer; background-color: #fff; color: #000 }
         .autocomplete-items div:hover { background-color: #4caf50; color: #fff }
         .autocomplete-active { background-color: #4caf50 !important; color: #fff }
+        #fileInput { display: none; }  /* Hide the file input by default */
+        #captureButton, #fileInput {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -82,7 +86,6 @@
             const context = canvas.getContext('2d');
             const fileInput = document.getElementById('fileInput');
             const captureButton = document.getElementById('captureButton');
-            const selectFileButton = document.getElementById('selectFileButton');
             const submitButton = document.querySelector('.submit-btn');
             let imageBase64 = null;
             let imageMimeType = null;
@@ -108,7 +111,7 @@
                     };
                 } catch (err) {
                     console.error("Error accessing camera:", err);
-                    alert("Unable to access camera. Make sure permissions are granted.");
+                    alert("Unable to access camera.  If you are on a phone, make sure you have granted camera permissions in your browser settings.  You can also choose a file instead.");
                     // Fallback to file input
                     document.getElementById('liveCamera').style.display = 'none';
                     document.getElementById('captureButton').style.display = 'none';
@@ -365,7 +368,7 @@
                         };
                     } catch (err) {
                         console.error("Error accessing camera:", err);
-                        alert("Unable to access camera. Make sure permissions are granted.");
+                        alert("Unable to access camera.  If you are on a phone, make sure you have granted camera permissions in your browser settings.  You can also choose a file instead.");
                         // Fallback to file input
                         videoElement.style.display = 'none';
                         captureButtonElem.style.display = 'none';
@@ -527,7 +530,7 @@ Serin,,`;
                 function addActive(x) {
                     if (!x) return false;
                     removeActive(x);
-                    if (currentFocus >= x.length) currentFocus = 0;
+                    if (currentFocus >= x.length) currentFocus= 0;
                     if (currentFocus < 0) currentFocus = (x.length - 1);
                     x[currentFocus].classList.add("autocomplete-active");
                 }

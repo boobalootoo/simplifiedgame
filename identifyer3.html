@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Species Identification</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Silkscreen&display=swap');
+
+        body {
+            font-family: 'Silkscreen', cursive;
+            background-color: skyblue;
+            color: forestgreen;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .button {
+            font-family: 'Silkscreen', cursive;
+            border: 6px solid forestgreen;
+            background: beige;
+            color: forestgreen;
+            padding: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            margin: 5px;
+            box-shadow: 4px 4px forestgreen;
+            width: 100%;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+            color: forestgreen;
+            background-color: beige;
+            border: 8px solid forestgreen;
+            box-shadow: 6px 6px forestgreen;
+            table-layout: fixed;
+        }
+
+        thead {
+            background-color: beige;
+        }
+
+        th, td {
+            font-family: 'Silkscreen', cursive;
+            border: 6px solid forestgreen;
+            padding: 12px;
+            text-align: center;
+            background-color: beige;
+            width: 20%;
+            word-wrap: break-word;
+        }
+
+        input, button {
+            font-family: 'Silkscreen', cursive;
+            background: #9CAF88;
+            color: forestgreen;
+            border: 6px solid forestgreen;
+            padding: 8px;
+            box-shadow: 3px 3px forestgreen;
+            width: 100%;
+            max-width: 300px;
+            box-sizing: border-box;
+        }
+
+        input[type="text"] {
+            max-width: 200px;
+        }
+
+        td input {
+            width: 100%;
+        }
+
+        td button {
+            width: 100%;
+            max-width: 200px;
+            margin: 0;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 600px) {
+            table {
+                width: 100%;
+            }
+
+            th, td {
+                padding: 8px;
+                font-size: 14px;
+            }
+
+            input, button {
+                padding: 6px;
+            }
+
+            .button {
+                font-size: 16px;
+            }
+            
+            td button {
+                width: 100%;
+                max-width: 150px;
+            }
+        }
+
+        /* Styles for the card container */
+        #species-card-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        /* Styles for the card itself */
+        #species-card {
+            width: 200px; /* Reduced width */
+            height: auto;  /* Maintain aspect ratio */
+            border-radius: 8px;
+            text-align: center;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #species-card img{
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* Style for close button */
+        #close-card-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #f00;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #close-card-button:hover {
+             background-color: #ff4500;
+        }
+        
+        /* Autocomplete Styles */
+        .autocomplete {
+            position: relative;
+            display: inline-block;
+        }
+
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid #4CAF50;
+            border-bottom: none;
+            border-top: none;
+            z-index: 1;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #fff;
+        }
+
+        .autocomplete-items div {
+            padding: 10px;
+            cursor: pointer;
+            background-color: #fff;
+            color: #000;
+        }
+
+        .autocomplete-items div:hover {
+            background-color: #4CAF50;
+            color: #fff;
+        }
+
+        .autocomplete-active {
+            background-color: #4CAF50 !important;
+            color: #fff;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <table>
+            <thead>
+                <tr>
+                    <th>USERNAME</th>
+                    <th>PHOTO</th>
+                    <th>SPECIES NAME</th>
+                    <th>DATE</th>
+                    <th>PLACE</th>
+                    <th>SUBMIT</th>
+                </tr>
+            </thead>
+            <tbody id="species-records">
+                <tr>
+                    <td><input type="text" placeholder="Enter username"></td>
+                    <td>
+                        <div style="max-width: 320px; overflow: hidden;">
+                            <video id="liveCamera" width="100%" height="auto" autoplay style="display: block;"></video>
+                        </div>
+                        <canvas id="canvas" style="display: none;"></canvas>
+                        <br>
+                        <input type="file" id="fileInput" accept="image/*">
+                        <button id="captureButton">Capture Image</button>
+                        
+                        <p id="status"></p>
+                    </td>
+                    <td>
+                        <div class="autocomplete">
+                            <input type="text" id="speciesInput" placeholder="Species you think it is">
+                        </div>
+                    </td>
+                    <td>
+                        <input type="text" class="date" placeholder="Enter manually">
+                        <button class="button date-btn" onclick="getDate(this)">USE DEVICE DATE</button>
+                    </td>
+                    <td>
+                        <input type="text" class="place" placeholder="Enter manually">
+                        <button class="button location-btn" onclick="getLocation(this)">USE DEVICE LOCATION</button>
+                    </td>
+                    <td><button class="button submit-btn">SUBMIT</button></td>
+                </tr>
+            </tbody>
+        </table>
+        <script>
+            const video = document.getElementById('liveCamera');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            const fileInput = document.getElementById('fileInput');
+            const captureButton = document.getElementById('captureButton');
+            const selectFileButton = document.getElementById('selectFileButton');
+            const submitButton = document.querySelector('.submit-btn');
+            let imageBase64 = null;
+            let imageMimeType = null;
+            let imageFileName = null;
+            let stream = null; //keep track of the camera stream
+            let username = "";
+            let speciesName = "";
+            let date = "";
+            let place = "";
+
+
+            async function startCamera() {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    video.srcObject = stream;
+                    video.onloadedmetadata = () => {
+                        video.play();
+                    };
+                } catch (err) {
+                    console.error("Error accessing camera:", err);
+                    alert("Unable to access camera. Make sure permissions are granted.");
+                }
+            }
+            startCamera();
+            captureButton.addEventListener('click', () => {
+                captureImage();
+            });
+            
+            fileInput.addEventListener('change', () => {
+                handleFileSelect();
+            });
+            submitButton.addEventListener('click', () => {
+                uploadImage();
+            });
+
+            function getDate(buttonElement) {
+                const dateInput = buttonElement.previousElementSibling;
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+                const day = String(today.getDate()).padStart(2, '0');
+                date = `${year}-${month}-${day}`;
+                dateInput.value = date;
+            }
+
+            function getLocation(buttonElement) {
+                const locationInput = buttonElement.previousElementSibling;
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const latitude = position.coords.latitude;
+                            const longitude = position.coords.longitude;
+                            place = `Latitude: ${latitude}, Longitude: ${longitude}`;
+                            locationInput.value = place;
+                        },
+                        (error) => {
+                            alert(`Error getting location: ${error.message}`);
+                            locationInput.value = "Location unavailable";
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 5000,
+                        }
+                    );
+                } else {
+                    locationInput.value = "Geolocation is not supported by this browser.";
+                }
+            }
+
+
+            function captureImage() {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                imageBase64 = canvas.toDataURL('image/jpeg').split(',')[1];
+                imageMimeType = 'image/jpeg';
+                imageFileName = 'captured_image.jpg';
+                document.getElementById("status").innerText = "Image captured. Ready to submit.";
+                // Stop the camera stream after capturing the image.
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                video.srcObject = null; //clear the videoElement
+            }
+
+            function handleFileSelect() {
+                if (!fileInput.files.length) {
+                    return;
+                }
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onloadend = function () {
+                    imageBase64 = reader.result.split(',')[1];
+                    imageMimeType = file.type;
+                    imageFileName = file.name;
+                    document.getElementById("status").innerText = "File selected. Ready to submit.";
+                };
+                reader.readAsDataURL(file);
+            }
+
+            async function uploadImage() {
+                //get the username, species, and date
+                username = document.querySelector('input[placeholder="Enter username"]').value;
+                speciesName = document.getElementById('speciesInput').value;
+                date = document.querySelector('input[placeholder="Enter manually"]').value;
+                place = document.querySelector('input[placeholder="Enter manually"]').value;
+
+                if (!imageBase64) {
+                    alert("Please capture an image or select a file.");
+                    return;
+                }
+                //construct the filename
+                imageFileName = `${username}_${speciesName}_${date}.jpg`;
+                const response = await fetch("https://script.google.com/macros/s/AKfycbzW8aRLFh9E1WHUuugvvIqOyYBWrMNRmivot0grSBDRb-WX2Se2hCvzIkIdgMaLZG4-8Q/exec", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({
+                        image: imageBase64,
+                        mimetype: imageMimeType,
+                        filename: imageFileName
+                    })
+                });
+                const result = await response.json();
+                document.getElementById("status").innerText = result.status === "success"
+                    ? `Upload successful! Image URL: ${result.url}`
+                    : `Upload failed: ${result.message}`;
+                //clear the image data after upload
+                imageBase64 = null;
+                imageMimeType = null;
+                imageFileName = null;
+                //restart the camera
+                startCamera();
+            }
+        </script>
+        <button class="button add-row">ADD ROW</button>
+        <button class="button" onclick="window.location.href='map.html';">GO STRAIGHT TO MAP</button>
+
+        <table id="speciesTable">
+            <thead>
+                <tr>
+                    <th>Animal</th>
+                    <th>Plant</th>
+                    <th>Fungi</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            </tbody>
+        </table>
+        
+        <div id="species-card-container">
+            <div id="species-card">
+                <button id="close-card-button">Close</button>
+                <img id="species-card-img" src="" alt="Species Card">
+                </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const table = document.getElementById("species-records");
+            const addRowBtn = document.querySelector(".add-row");
+            const speciesCardContainer = document.getElementById("species-card-container");
+            const speciesCard = document.getElementById("species-card");
+            const speciesCardImg = document.getElementById("species-card-img");
+            const closeCardButton = document.getElementById("close-card-button");
+            
+            let autocompleteInputValue = "";
+
+            table.addEventListener("click", function(event) {
+                if (event.target.classList.contains("submit-btn")) {
+                    console.log("Submit button clicked!");
+
+                    const row = event.target.closest("tr");
+                    const username = row.cells[0].querySelector("input").value.trim() || "Unknown";
+                    const species = autocompleteInputValue || row.cells[2].querySelector("input").value.trim() || "Not specified"; // Use autocomplete value
+                    const date = row.cells[3].querySelector("input").value.trim() || "No date";
+                    const place = row.cells[4].querySelector("input").value.trim() || "Unknown location";
+
+                    const record = { username, species, date, place };
+                    console.log("Submitting record:", record);
+
+                    fetch("https://script.google.com/macros/s/AKfycbwsG06dGQsqT_22efWAZn9RtadK3JKAoINByzP1KLosycvC-Mv2q0S6Se4fdA84tF9pTw/exec", {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(record)
+                    })
+                    .then(() => {
+                        let speciesNameForURL = species.replace(/ /g, '%20');
+                        const lowerCaseName = speciesNameForURL.toLowerCase();
+                        const capitalizedName = speciesNameForURL.charAt(0).toUpperCase() + speciesNameForURL.slice(1);
+                        const imagePath = `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${capitalizedName}.png`;
+                        const imagePathLower = `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${lowerCaseName}.png`;
+                        const imagePathAllLower = `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${speciesNameForURL.toLowerCase()}.png`;
+                        
+                        // Check if the image exists
+                        const img = new Image();
+                        img.src = imagePath;
+                        img.onload = () => {
+                            speciesCardImg.src = imagePath;
+                            speciesCardImg.alt = species;
+                            speciesCardContainer.style.display = "flex";
+                        };
+                        img.onerror = () => {
+                            const imgLower = new Image();
+                            imgLower.src = imagePathLower;
+                            imgLower.onload = () => {
+                                speciesCardImg.src = imagePathLower;
+                                speciesCardImg.alt = species;
+                                speciesCardContainer.style.display = "flex";
+                            }
+                            imgLower.onerror = () => {
+                                const imgAllLower = new Image();
+                                imgAllLower.src = imagePathAllLower;
+                                imgAllLower.onload = () => {
+                                    speciesCardImg.src = imagePathAllLower;
+                                    speciesCardImg.alt = species;
+                                    speciesCardContainer.style.display = "flex";
+                                }
+                                imgAllLower.onerror = () => {
+                                    alert(`Card for ${species} not found`);
+                                }
+                            }
+                        }
+                        
+                    })
+                    .catch(error => console.error("Error:", error));
+                }
+            });
+
+            addRowBtn.addEventListener("click", function() {
+                console.log("Adding a new row");
+                const newRow = document.createElement("tr");
+                newRow.innerHTML = `
+                    <td><input type="text" placeholder="Enter username"></td>
+                    <td></td>
+                    <td>
+                        <div class="autocomplete">
+                            <input type="text" id="speciesInput" placeholder="Species you think it is">
+                        </div>
+                    </td>
+                    <td>
+                        <input type="text" class="date" placeholder="Enter manually">
+                        <button class="button date-btn" onclick="getDate(this)">USE DEVICE DATE</button>
+                    </td>
+                    <td>
+                        <input type="text" class="place" placeholder="Enter manually">
+                        <button class="button location-btn" onclick="getLocation(this)">USE DEVICE LOCATION</button>
+                    </td>
+                    <td><button class="button submit-btn">SUBMIT</button></td>
+                `;
+                const newCell = newRow.cells[2].querySelector("#speciesInput")
+                autocomplete(newCell, speciesNames);
+                table.appendChild(newRow);
+            });
+
+            window.getDate = function(button) {
+                button.previousElementSibling.value = new Date().toISOString().split("T")[0];
+            };
+
+            window.getLocation = function(button) {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        button.previousElementSibling.value = `Lat: ${position.coords.latitude}, Lon: ${position.coords.longitude}`;
+                    });
+                } else {
+                    alert("Geolocation is not supported by this browser.");
+                }
+            };
+
+            const csvData = `
+Alpine Newt,Bluebell,Death Cap Mushroom
+American mink,Bird’s-foot Trefoil,Fly Agaric Mushroom
+Balearic Shearwater,Blackthorn,Jelly Ear Fungus
+Banded Demoiselle,Bluebell,Orange Peel Fungus
+bank vole,Bramble,Panther Cap Mushroom
+barbastelle bat,Broom,Scarlet Elf Cup Fungus
+Barn Owl,Bugle,Shaggy Inkcap Mushroom
+bat,Cat’s-ear,Stinkhorn Fungus
+Bearded Tit,Common Bistort,
+Beautiful Demoiselle,Common Blackbird,
+Bechsteins bat,Common Blue Butterfly,
+bottlenose dolphin,Common Centaury,
+Brambling,Common Chickweed,
+Brandts bat,Common Dog Violet,
+Broad-bodied Chaser,Common Fleabane,
+brown long-eared bat,Common Hawthorn,
+brown rat,Common Hemp-nettle,
+Buff-tailed Bumblebee,Common Honeysuckle,
+Carrion Crow,Common Knapweed,
+Cave Spider,Common Mallow,
+Chaffinch,Common Milkwort,
+Chinese water deer,Common Mouse-ear,
+Coal Tit,Common Poppy,
+Collared Dove,Common Ragwort,
+Comma Butterfly,Common Spotted Orchid,
+Common Blackbird,Common Toadflax,
+Common Blue Butterfly,Common Valerian,
+Common Crab Spider,Common Water-crowfoot,
+Common Crossbill,Corn Bunting,
+Common Darter Dragonfly,Corn Marigold,
+Common Dolphin,Cornflower,
+Common Fox Spider,Cuckooflower,
+Common Frog,Daisy,
+Common Kingfisher,Dandelion,
+Common Linnet,Dogwood,
+Common Lizard,Elder,
+Common Moorhen,English Oak,
+Common Redshank,Eyebright,
+Common Sandpiper,Field Scabious,
+common shrew,Foxglove,
+Common Snipe,Germander Speedwell,
+Common Swift,Great Burnet,
+Common Toad,Great Willowherb,
+common vole,Greater Knapweed,
+Common Wood Pigeon,Greater Plantain,
+Cormorant,Greater Stitchwort,
+Corncrake,Green Alkanet,
+coypu,Harebell,
+Cuckoo,Hedge Bindweed,
+deer family,Herb Robert,
+Devils Coach Horse,Hogweed,
+domestic cat,Lady’s Bedstraw,
+domestic ferret,Lesser Celandine,
+domestic goat,Marsh Cinquefoil,
+Dusky Warbler,Marsh Horsetail,
+Edible Frog,Marsh Violet,
+elephants,Marsh Woundwort,
+Emperor Dragonfly,Marsh-marigold,
+Eurasian beaver,Meadow Buttercup,
+Eurasian Blackbird,Meadow Crane’s-bill,
+Eurasian Curlew,Meadow Pipit,
+Eurasian Magpie,Meadow Vetchling,
+Eurasian water shrew,Meadowsweet,
+Eurasian Wren,Primrose,
+European Adder,Purple Loosestrife,
+European badger,Red Campion,
+European Garden Spider,Red Dead-nettle,
+European Goldfinch,Sea Holly,
+European Greenfinch,Selfheal,
+European hare,Silver Birch,
+European hedgehog,Silverweed,
+European mole,Sneezewort,
+European Nightjar,Spearmint,
+European otter,Stinging Nettle,
+European polecat,Thrift (Sea Pink),
+European rabbit,Water Mint,
+European Robin,White Dead-nettle,
+European Starling,Wild Angelica,
+European Stonechat,Wild Basil,
+European water vole,Wild Carrot,
+European wildcat,Wild Clary,
+fallow deer,Wild Garlic (Crow Garlic),
+False Black Widow Spider,Wild Garlic (Ramsons),
+Fen Raft Spider,Wild Marjoram,
+ferret_polecat hybrid,Wild Pansy (Heartsease),
+field vole,Wild Parsnip,
+Firecrest,Wild Radish,
+Foxglove,Wild Strawberry,
+Goldfinch,Wild Thyme,
+Grass Snake,Wood Anemone,
+Great Crested Grebe,Wood Avens,
+Great Crested Newt,Wood Sorrel,
+Great Spotted Woodpecker,Yarrow,
+Great Tit,Yellow Archangel,
+greater horseshoe bat,Yellow Flag Iris,
+greater white-toothed shrew,Yellow Rattle,
+Grey Heron,,
+grey seal,,
+Hammock-web Spider,,
+harbour porpoise,,
+harbour seal,,
+harvest mouse,,
+hazel dormouse,,
+Hen Harrier,,
+Holly Blue Butterfly,,
+house mouse,,
+House Sparrow,,
+humpback whale,,
+Irish hare,,
+Jackdaw,,
+Kestrel,,
+Lace Web Spider,,
+Large Red Damselfly,,
+Leislers bat,,
+lesser horseshoe bat,,
+lesser white-toothed shrew,,
+Little Egret,,
+Little Owl,,
+Little Tern,,
+long-eared bats,,
+Long-tailed Tit,,
+Mallard Duck,,
+mammals,,
+Marmalade Hoverfly,,
+Marsh Frog,,
+Marsh Harrier,,
+Meadow Pipit,,
+mice and rats,,
+mice genus,,
+Migrant Hawker Dragonfly,,
+minke whale,,
+mountain hare,,
+mouse-eared bats,,
+Mute Swan,,
+Nathusius pipistrelle,,
+Natterer's bat,,
+Natterjack Toad,,
+noctule bat,,
+noctule bats,,
+noctule_serotine bat group,,
+Northern Lapwing,,
+Northern Wheatear,,
+oceanic dolphins,,
+Painted Lady Butterfly,,
+Pallas's Warbler,,
+Palmate Newt,,
+Peacock Butterfly,,
+Peregrine Falcon,,
+Pied Wagtail,,
+pine marten,,
+pipistrelle bat genus,,
+Pomarine Skua,,
+pygmy shrew,,
+Raft Spider,,
+Red Admiral Butterfly,,
+red deer,,
+red fox,,
+Red Kite,,
+red squirrel,,
+Red-backed Shrike,,
+Red-flanked Bluetail,,
+red-necked wallaby,,
+Red-tailed Bumblebee,,
+Red-throated Diver,,
+Redwing,,
+Reed Bunting,,
+Reeves's muntjac,,
+Ring Ouzel,,
+Rissos dolphin,,
+roe deer,,
+Rook,,
+Roseate Tern,,
+Running Crab Spider,,
+Rustic Bunting,,
+Sand Lizard,,
+Sand Martin,,
+Serin,,`;
+            const speciesList = document.getElementById("speciesTable").getElementsByTagName("tbody")[0];
+            const speciesNames = csvData.split("\n").slice(1).flatMap(row => {
+                const columns = row.split(",");
+                return columns.map(col => col.trim());
+            }).filter(Boolean);
+
+
+            function populateSpeciesTable() {
+                const rows = csvData.split("\n").slice(1);
+                rows.forEach(row => {
+                    const columns = row.split(",");
+                    const newRow = speciesList.insertRow();
+
+                    columns.forEach((column, index) => {
+                        const cell = newRow.insertCell(index);
+                        const speciesName = column.trim();
+
+                        if (index === 0 || index === 1 || index === 2) {
+                            const img = document.createElement("img");
+                            img.src = `https://boobalootoo.github.io/simplifiedgame/images/${speciesName}.png`;
+                            img.alt = speciesName;
+                            img.style.width = "50px";
+                            img.style.height = "auto";
+                            cell.appendChild(img);
+                            cell.appendChild(document.createElement("br"));
+                            cell.appendChild(document.createTextNode(speciesName));
+                        } else {
+                            cell.textContent = speciesName;
+                        }
+                    });
+                });
+            }
+
+            populateSpeciesTable();
+            
+            closeCardButton.addEventListener('click', () => {
+                speciesCardContainer.style.display = 'none';
+                speciesCardImg.src = "";
+                speciesCardImg.alt = "";
+            });
+            
+            function autocomplete(inp, arr) {
+              var currentFocus;
+              inp.addEventListener("input", function(e) {
+                var a, b, i, val = this.value;
+                autocompleteInputValue = val;
+                closeAllLists();
+                if (!val) { return false; }
+                currentFocus = -1;
+                a = document.createElement("div");
+                a.setAttribute("id", this.id + "autocomplete-list");
+                a.setAttribute("class", "autocomplete-items");
+                this.parentNode.appendChild(a);
+                for (i = 0; i < arr.length; i++) {
+                  if (arr[i].substr(0, val.length).toUpperCase() == val.toUpperCase()) {
+                    b = document.createElement("div");
+                    b.innerHTML = "<strong>" + arr[i].substr(0, val.length) + "</strong>";
+                    b.innerHTML += arr[i].substr(val.length);
+                    b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
+                    b.addEventListener("click", function(e) {
+                      inp.value = this.getElementsByTagName("input")[0].value;
+                      autocompleteInputValue = this.getElementsByTagName("input")[0].value;
+                      closeAllLists();
+                    });
+                    a.appendChild(b);
+                  }
+                }
+              });
+              inp.addEventListener("keydown", function(e) {
+                var x = document.getElementById(this.id + "autocomplete-list");
+                if (x) x = x.getElementsByTagName("div");
+                if (e.keyCode == 40) {
+                  currentFocus++;
+                  addActive(x);
+                } else if (e.keyCode == 38) {
+                  currentFocus--;
+                  addActive(x);
+                } else if (e.keyCode == 13) {
+                  e.preventDefault();
+                  if (currentFocus > -1) {
+                    if (x) x[currentFocus].click();
+                  }
+                }
+              });
+              function addActive(x) {
+                if (!x) return false;
+                removeActive(x);
+                if (currentFocus >= x.length) currentFocus = 0;
+                if (currentFocus < 0) currentFocus = (x.length - 1);
+                x[currentFocus].classList.add("autocomplete-active");
+              }
+              function removeActive(x) {
+                for (var i = 0; i < x.length; i++) {
+                  x[i].classList.remove("autocomplete-active");
+                }
+              }
+              function closeAllLists(elmnt) {
+                var x = document.getElementsByClassName("autocomplete-items");
+                for (var i = 0; i < x.length; i++) {
+                  if (elmnt != x[i] && elmnt != inp) {
+                    x[i].parentNode.removeChild(x[i]);
+                  }
+                }
+              }
+              document.addEventListener("click", function (e) {
+                closeAllLists(e.target);
+              });
+            }
+            
+            const speciesInput = document.getElementById("speciesInput");
+            autocomplete(speciesInput, speciesNames);
+
+        });
+    </script>
+</body>
+</html>

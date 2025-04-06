@@ -222,6 +222,10 @@
                         <button id="captureButton">Capture Image</button>
                         
                         <p id="status"></p>
+                        <div style="text-align: center; margin-top: 10px;">
+                        <button id="zoomIn">+</button>
+                        <button id="zoomOut">-</button>
+                        </div>
                     </td>
                     <td>
                         <div class="autocomplete">
@@ -246,6 +250,8 @@
             const context = canvas.getContext('2d');
             const fileInput = document.getElementById('fileInput');
             const captureButton = document.getElementById('captureButton');
+            const zoomInButton = document.getElementById('zoomIn');
+            const zoomOutButton = document.getElementById('zoomOut');
             const selectFileButton = document.getElementById('selectFileButton');
             const submitButton = document.querySelector('.submit-btn');
             let imageBase64 = null;
@@ -256,20 +262,24 @@
             let speciesName = "";
             let date = "";
             let place = "";
+            let currentZoom = 1;
 
 
             async function startCamera() {
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                    video.srcObject = stream;
-                    video.onloadedmetadata = () => {
-                        video.play();
-                    };
-                } catch (err) {
-                    console.error("Error accessing camera:", err);
-                    alert("Unable to access camera. Make sure permissions are granted.");
-                }
-            }
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+            video.play();
+            if ('zoom' in stream.getVideoTracks()[0].getSettings()) {
+                stream.getVideoTracks()[0].applyConstraints({ advanced: [{ zoom: currentZoom }] });
+            }
+        };
+    } catch (err) {
+        console.error("Error accessing camera:", err);
+        alert("Unable to access camera. Make sure permissions are granted.");
+    }
+}
             startCamera();
             captureButton.addEventListener('click', () => {
                 captureImage();

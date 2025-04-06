@@ -550,7 +550,7 @@
         window.getLocation = function(button) {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(function(position) {
-                    button.previousElementSibling.value = `Lat: ${position.coords.latitude}, Lon: ${position.coords.longitude}`;
+                   button.previousElementSibling.value = `Lat: ${parseFloat(position.coords.latitude.toFixed(2))}, Lon: ${parseFloat(position.coords.longitude.toFixed(2))}`;
                 });
             } else {
                 alert("Geolocation is not supported by this browser.");

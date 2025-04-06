@@ -1,11 +1,10 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Map</title>
 
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 
     <style>
@@ -14,7 +13,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+       
         body {
             background-color: #87CEEB;
             display: flex;
@@ -22,7 +21,7 @@
             align-items: center;
             height: 100vh;
         }
-        
+       
         #map-container {
             background-color: #0B6623;
             padding: 20px;
@@ -33,12 +32,12 @@
             max-width: 100%;
             max-height: 100%;
         }
-        
+       
         #map {
             width: 100%;
             height: 100%;
         }
-        
+       
         .red-marker {
             display: flex;
             align-items: center;
@@ -62,33 +61,33 @@
             padding: 10px;
             max-width: 300px;
         }
-        
+       
         .marker-group {
             margin-bottom: 10px;
             padding: 5px;
             border-bottom: 1px solid #ccc;
         }
-        
+       
         .marker-group:last-child {
             border-bottom: none;
         }
-        
+       
         .coordinates {
             font-weight: bold;
             margin-bottom: 5px;
         }
-        
+       
         .species-info {
             color: #2c3e50;
             margin: 5px 0;
         }
-        
+       
         .date-info {
             color: #7f8c8d;
             font-style: italic;
             margin-bottom: 5px;
         }
-        
+       
         .group-count {
             background-color: #f0f0f0;
             padding: 5px;
@@ -102,16 +101,16 @@
         <div id="map"></div>
     </div>
 
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             console.log("Starting map initialization...");
 
-            var map = L.map('map').setView([25.1242671, 55.3520156], 10);
+            // Set the map's initial view to the UK
+            var map = L.map('map').setView([55.3781, -3.4360], 4); // Centered on UK, zoom level 4
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
             let markers = [];
@@ -119,7 +118,7 @@
             let markerData = {};
 
             console.log("Setting up marker overlap detection...");
-            
+           
             function areMarkersOverlapping(marker1, marker2, zoomLevel) {
                 const pixelDistance = Math.pow(2, 20 - zoomLevel) * 0.5;
                 return marker1.getLatLng().distanceTo(marker2.getLatLng()) <= pixelDistance;
@@ -142,7 +141,7 @@
             function updateMarkerCounts() {
                 const zoomLevel = map.getZoom();
                 console.log(`Updating marker counts at zoom level ${zoomLevel}`);
-                
+               
                 const overlaps = {};
                 markers.forEach((marker1, i) => {
                     overlaps[i] = [];
@@ -158,9 +157,9 @@
                     const iconHtml = `<div class="red-marker">${count > 1 ? count : ''}</div>`;
                     markerIcons[i].options.html = iconHtml;
                     marker.setIcon(markerIcons[i]);
-                    
+                   
                     const popupContent = createPopupContent(i, overlaps[i], zoomLevel);
-                    marker.bindPopup(popupContent, { 
+                    marker.bindPopup(popupContent, {
                         className: 'marker-popup',
                         autoPan: true,
                         maxWidth: 400
@@ -170,18 +169,18 @@
 
             function createPopupContent(mainIndex, overlappingIndices, zoomLevel) {
                 let content = '<div class="marker-group">';
-                
+               
                 const mainMarker = markers[mainIndex];
                 const mainCoords = mainMarker.getLatLng();
                 const mainData = markerData[mainIndex];
-                
+               
                 content += `
                     <div class="coordinates">${formatCoordinates(mainCoords.lat, mainCoords.lng)}</div>
                     <div class="species-info">Species: ${mainData.species}</div>
                     <div class="date-info">Date: ${mainData.date}</div>
                     <div class="group-count">Part of group: ${(overlappingIndices.length + 1)} markers</div>
                 `;
-                
+               
                 overlappingIndices.forEach(index => {
                     const marker = markers[index];
                     const coords = marker.getLatLng();
@@ -194,7 +193,7 @@
                         </div>
                     `;
                 });
-                
+               
                 content += '</div>';
                 return content;
             }
@@ -238,12 +237,12 @@
                             iconSize: [25, 25],
                             iconAnchor: [12, 12]
                         });
-                        
-                        const marker = L.marker([lat, lon], { 
+                       
+                        const marker = L.marker([lat, lon], {
                             icon: customIcon,
-                            riseOnHover: true 
+                            riseOnHover: true
                         }).addTo(map);
-                        
+                       
                         markerIcons[markers.length] = customIcon;
                         markers.push(marker);
                     });

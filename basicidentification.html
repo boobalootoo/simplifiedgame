@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Species Identifier</title>
+</head>
+<body>
+
+  <input type="file" accept="image/*" id="imageInput" multiple>
+  <button onclick="identifySpecies()">Identify Species</button>
+  <div id="results"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+
+  <script>
+    async function identifySpecies() {
+      const model = await mobilenet.load();
+      const imageInput = document.getElementById('imageInput');
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '';
+
+      if (imageInput.files.length === 0) {
+        resultsDiv.innerHTML = 'Please select an image.';
+        return;
+      }
+
+      for (const file of imageInput.files) {
+        const img = document.createElement('img');
+        img.src = await new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result);
+          reader.readAsDataURL(file);
+        });
+        await img.decode();
+
+        const predictions = await model.classify(img);
+        predictions.forEach(prediction => {
+          const result = document.createElement('div');
+          result.textContent = `${prediction.className} - ${(prediction.probability * 100).toFixed(2)}%`;
+          resultsDiv.appendChild(result);
+        });
+      }
+    }
+  </script>
+
+</body>
+</html>

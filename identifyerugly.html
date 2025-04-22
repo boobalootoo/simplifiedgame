@@ -1,0 +1,264 @@
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Species Identification</title>
+  <style>
+   body {
+    font-family: Arial, sans-serif;
+    background-color: #f2f2f2;
+    margin: 0;
+    padding: 20px;
+   }
+   .container {
+    max-width: 1400px;
+    margin: auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+   }
+   table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+   }
+   th, td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    vertical-align: top;
+   }
+   input[type="text"], select {
+    padding: 5px;
+    width: 100%;
+   }
+   .button {
+    margin-top: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+   }
+   #species-card-container {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.8);
+   }
+   #species-card {
+    background: white;
+    padding: 20px;
+    text-align: center;
+    border-radius: 8px;
+   }
+   #species-card img {
+    max-width: 300px;
+   }
+  </style>
+ </head>
+ <body>
+ <div class="container">
+  <h1>Species Identification Table</h1>
+  <table id="species-table">
+   <thead>
+    <tr>
+     <th>Username</th>
+     <th>Photo</th>
+     <th>Species Identification</th>
+     <th>Date</th>
+     <th>Place</th>
+     <th>Submit</th>
+    </tr>
+   </thead>
+   <tbody></tbody>
+  </table>
+  <button class="button" onclick="addRow()">Add New Row</button>
+ </div>
+
+ <div id="species-card-container">
+  <div id="species-card">
+   <img id="species-card-img" alt="Species card">
+   <br><br>
+   <button onclick="document.getElementById('species-card-container').style.display='none'">Close</button>
+  </div> 
+ </div>
+
+ <script>
+ let rowCount = 0;
+
+ function addRow() {
+  const table = document.querySelector("#species-table tbody");
+  const row = document.createElement("tr");
+  const videoId = `video${rowCount}`;
+  const canvasId = `canvas${rowCount}`;
+  const captureBtnId = `capture${rowCount}`;
+  const previewImgId = `preview${rowCount}`;
+  const fileUploadId = `file-upload-${rowCount}`;
+  const idPreviewId = `id-preview-${rowCount}`;
+  const statusId = `status${rowCount}`;
+
+  row.innerHTML = `
+   <td><input type="text" placeholder="Username"></td>
+   <td>
+    <video id="${videoId}" autoplay style="width: 200px;"></video><br>
+    <canvas id="${canvasId}" style="display: none;"></canvas><br>
+    <button class="button" id="${captureBtnId}">Capture</button><br>
+    <img id="${previewImgId}" style="width: 200px; margin-top: 10px;" />
+   </td>
+   <td>
+    <input type="text" placeholder="Species name"><br>
+    <input type="file" accept="image/*" id="${fileUploadId}" />
+    <br><img id="${idPreviewId}" style="width: 200px; margin-top: 10px; display: none;" />
+    <button class="button" onclick="previewImage(${rowCount})">Preview Image</button>
+    <p id="${statusId}"></p>
+   </td>
+   <td>
+    <input type="text" placeholder="Enter manually">
+    <button class="button" onclick="this.previousElementSibling.value=new Date().toISOString().split('T')[0]">USE DEVICE DATE</button>
+   </td>
+   <td>
+    <input type="text" placeholder="Enter manually">
+    <button class="button" onclick="useLocation(this)">USE DEVICE LOCATION</button>
+   </td>
+   <td id="submit-cell-${rowCount}"><button class="button" onclick="submitRow(this, ${rowCount})">SUBMIT</button></td>
+  `;
+
+  table.appendChild(row);
+
+  const video = document.getElementById(videoId);
+  navigator.mediaDevices.getUserMedia({ video: true })
+   .then(stream => {
+    video.srcObject = stream;
+   })
+   .catch(() => {
+    video.outerHTML = `<p>Camera unavailable</p>`;
+   });
+
+  document.getElementById(captureBtnId).addEventListener("click", () => {
+   const canvas = document.getElementById(canvasId);
+   const ctx = canvas.getContext("2d");
+   canvas.width = video.videoWidth;
+   canvas.height = video.videoHeight;
+   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+   const dataURL = canvas.toDataURL("image/png");
+   document.getElementById(previewImgId).src = dataURL;
+  });
+
+  rowCount++;
+ }
+
+ function useLocation(button) {
+  const input = button.previousElementSibling;
+  if (navigator.geolocation) {
+   navigator.geolocation.getCurrentPosition(position => {
+    input.value = `Lat: ${position.coords.latitude.toFixed(2)}, Lon: ${position.coords.longitude.toFixed(2)}`;
+   }, () => alert("Location access denied."));
+  } else {
+   alert("Geolocation not supported.");
+  }
+ }
+
+ async function uploadToDrive(base64Data, mimetype, filename, statusId) {
+  const response = await fetch("https://script.google.com/macros/s/AKfycbzW8aRLFh9E1WHUuugvvIqOyYBWrMNRmivot0grSBDRb-WX2Se2hCvzIkIdgMaLZG4-8Q/exec", {
+   method: "POST",
+   headers: { "Content-Type": "application/x-www-form-urlencoded" },
+   body: new URLSearchParams({
+    image: base64Data,
+    mimetype: mimetype,
+    filename: filename
+   })
+  });
+  const result = await response.json();
+  const statusEl = document.getElementById(statusId);
+  if (result.status === "success") {
+    const imageUrl = result.url;
+    return imageUrl; // Return the URL
+  } else {
+   statusEl.innerText = `Upload failed: ${result.message}`;
+   return null;
+  }
+ }
+
+  function previewImage(rowId) {
+  const fileInput = document.getElementById(`file-upload-${rowId}`);
+  const preview = document.getElementById(`id-preview-${rowId}`);
+
+  if (fileInput.files && fileInput.files[0]) {
+   const file = fileInput.files[0];
+   const reader = new FileReader();
+   reader.readAsDataURL(file);
+   reader.onloadend = () => {
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+   };
+  }
+ }
+
+ async function submitRow(button, rowId) {
+  const row = button.closest("tr");
+  const username = row.cells[0].querySelector("input").value || "Unknown";
+  const species = row.cells[2].querySelector("input").value || "Not specified";
+  const date = row.cells[3].querySelector("input").value || "Unknown date";
+  const place = row.cells[4].querySelector("input").value || "Unknown location";
+  const statusId = `status${rowId}`;
+  const fileInput = document.getElementById(`file-upload-${rowId}`);
+  const canvas = document.getElementById(`canvas${rowId}`);
+  const previewImg = document.getElementById(`preview${rowId}`).src; // Get the data URL of the captured image
+  let imageUrl = ""; //default
+  const submitCell = document.getElementById(`submit-cell-${rowId}`);
+
+
+  if (fileInput.files && fileInput.files[0]) {
+   const file = fileInput.files[0];
+   const reader = new FileReader();
+   reader.readAsDataURL(file);
+   reader.onloadend = async () => {
+    const base64Data = reader.result.split(',')[1];
+    const filename = `${username}_${date}_file.png`.replace(/\s+/g, "_"); // Suffix filename
+    imageUrl = await uploadToDrive(base64Data, file.type, filename, statusId);
+     // Continue with submission after upload
+     if(imageUrl){
+        submitCell.innerText = `Upload successful! Image URL: ${imageUrl}`;
+        submitData(row, username, species, date, place, imageUrl);
+     }
+   }
+  }
+  else if(previewImg){ //check if there is a captured image
+        const base64Data = previewImg.split(',')[1];
+        const filename = `${username}_${date}_capture.png`.replace(/\s+/g, "_");
+        imageUrl = await uploadToDrive(base64Data, "image/png", filename, statusId);
+        if(imageUrl){
+           submitCell.innerText = `Upload successful! Image URL: ${imageUrl}`;
+           submitData(row, username, species, date, place, imageUrl);
+        }
+  }
+  else{
+    submitData(row, username, species, date, place, imageUrl); //submit with empty imageUrl
+  }
+ }
+
+ function submitData(row, username, species, date, place, imageUrl){
+    const record = { username, species, date, place, imageUrl };
+
+  fetch("https://script.google.com/macros/s/AKfycbwsG06dGQsqT_22efWAZn9RtadK3JKAoINByzP1KLosycvC-Mv2q0S6Se4fdA84tF9pTw/exec", {
+   method: "POST",
+   mode: "no-cors",
+   headers: { "Content-Type": "application/json" },
+   body: JSON.stringify(record)
+  });
+
+  const img = new Image();
+  const speciesFormatted = species.trim().replace(/\s+/g, "%20");
+  const imagePath = `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${speciesFormatted}.png`;
+  img.src = imagePath;
+  img.onload = () => {
+   document.getElementById("species-card-img").src = imagePath;
+   document.getElementById("species-card-img").alt = species;
+   document.getElementById("species-card-container").style.display = "flex";
+  };
+  img.onerror = () => alert(`Card for "${species}" not found.`);
+ }
+ </script>
+ </body>
+ </html>

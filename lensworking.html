@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Species Identification</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Silkscreen&display=swap" rel="stylesheet" />
+  <style>
+    body { 
+      font-family: 'Silkscreen', cursive; 
+      background: #000; 
+      color: #fff; 
+      text-align: center; 
+      margin: 0; 
+      padding: 20px; 
+    }
+    h1 { 
+      font-size: 24px; 
+      margin: 20px 0; 
+    }
+    video, img {
+      border: 2px solid #00ffcc; 
+      border-radius: 10px; 
+    }
+    .btn {
+      background: transparent;
+      color: #00ffcc;
+      border: 2px solid #00ffcc;
+      padding: 10px 20px;
+      margin: 10px;
+      cursor: pointer;
+      border-radius: 10px;
+      font-family: 'Silkscreen', cursive;
+    }
+    .btn:hover {
+      background-color: #00ffcc;
+      color: #000;
+    }
+    .flex-center {
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      max-width: 600px; 
+      margin: 0 auto; 
+    }
+    #results div {
+      margin: 5px 0; 
+      padding: 5px; 
+      border: 1px solid #555; 
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Species Identification</h1>
+  <div class="flex-center">
+    <video id="cameraFeed" autoplay playsinline class="my-4 rounded-xl shadow-md" width="320" height="240"></video>
+    <p>If live processing is unavailable, you can batch upload your images below:</p>
+    <input type="file" accept="image/*" id="imageInput" class="mb-4" multiple />
+
+    <!-- Google Lens button opens lens.google.com in new tab -->
+    <button class="btn" onclick="openGoogleLens()">Use Google Lens</button>
+    
+    <button class="btn" onclick="identifySpecies()">Identify Species</button>
+    <div id="results"></div>
+    <!-- After identification, user can go to the map page -->
+    <button class="btn" onclick="goToMap()">Submit & Go to Map</button>
+  </div>
+
+  <script>
+  function openGoogleLens() {
+    const file = imageInput.files[0];
+    if (!file) {
+      window.open('https://lens.google.com/', '_blank');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('encoded_image', file);
+
+    // Create a temporary form to submit the image
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.enctype = 'multipart/form-data';
+    form.action = 'https://lens.google.com/upload'; 
+    form.target = '_blank';
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.name = 'encoded_image';
+    input.files = imageInput.files;
+
+    // Append file input to form
+    form.appendChild(input);
+
+    // Attach to body and submit
+    document.body.appendChild(form);
+    form.submit();
+
+    // Cleanup
+    document.body.removeChild(form);
+  }
+</script>
+
+</body>
+</html>

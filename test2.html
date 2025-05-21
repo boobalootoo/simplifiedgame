@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Species Identification</title>
+    <style>
+        body { font-family: Silkscreen, cursive; background-color: #87ceeb; color: #228b22; text-align: center; margin: 0; padding: 0; }
+        .container { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        .button{font-family:Silkscreen,cursive;border:6px solid #228b22;background:beige;color:#228b22;padding:12px;cursor:pointer;font-size:18px;margin:5px;box-shadow:4px 4px #228b22;width:100%}
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; color: #228b22; background-color: beige; border: 8px solid #228b22; box-shadow: 6px 6px #228b22; table-layout: fixed; }
+        thead { background-color: beige; }
+        td, th { font-family: Silkscreen, cursive; border: 6px solid #228b22; padding: 12px; text-align: center; background-color: beige; width: 20%; word-wrap: break-word; }
+        button, input { font-family: Silkscreen, cursive; background: #9caf88; color: #228b22; border: 6px solid #228b22; padding: 8px; box-shadow: 3px 3px #228b22; width: 100%; max-width: 300px; box-sizing: border-box; }
+        input[type=text] { max-width: 200px; }
+        td input{width:100%}
+        td button{width:100%;max-width:200px;margin:0;box-sizing:border-box}
+        @media (max-width: 600px) {
+            table { width: 100% }
+            td, th { padding: 8px; font-size: 14px }
+            button, input { padding: 6px }
+            .button{font-size:16px}
+            td button{width:100%;max-width:150px}
+        }
+        #species-card-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, .8); justify-content: center; align-items: center; z-index: 10; }
+        #species-card { width: 200px; height: auto; border-radius: 8px; text-align: center; font-family: Arial, sans-serif }
+        #species-card img { max-width: 100%; max-height: 100% }
+        #close-card-button { position: absolute; top: 10px; right: 10px; background-color: red; color: #fff; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 16px }
+        #close-card-button:hover { background-color: #ff4500 }
+        .autocomplete { position: relative; display: inline-block; }
+        .autocomplete-items { position: absolute; border: 1px solid #4caf50; border-bottom: none; border-top: none; z-index: 1; top: 100%; left: 0; right: 0; max-height: 200px; overflow-y: auto; background-color: #fff }
+        .autocomplete-items div { padding: 10px; cursor: pointer; background-color: #fff; color: #000 }
+        .autocomplete-items div:hover { background-color: #4caf50; color: #fff }
+        .autocomplete-active { background-color: #4caf50 !important; color: #fff }
+        #fileInput { display: none; }  /* Hide the file input by default */
+        #captureButton, #fileInput {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <table>
+            <thead>
+                <tr>
+                    <th>USERNAME</th>
+                    <th>PHOTO</th>
+                    <th>SPECIES NAME</th>
+                    <th>DATE</th>
+                    <th>PLACE</th>
+                    <th>SUBMIT</th>
+                </tr>
+            </thead>
+            <tbody id="species-records">
+                <tr>
+                    <td><input type="text" placeholder="Enter username"></td>
+                    <td>
+                        <div style="max-width:320px;overflow:hidden">
+                            <video id="liveCamera" width="100%" height="auto" autoplay style="display:block"></video>
+                        </div>
+                        <canvas id="canvas" style="display:none"></canvas><br>
+                        <input type="file" id="fileInput" accept="image/*">
+                        <button id="captureButton">Capture Image</button>
+                        <p id="status"></p>
+                    </td>
+                    <td>
+                        <div class="autocomplete">
+                            <input type="text" id="speciesInput" placeholder="Species you think it is">
+                        </div>
+                    </td>
+                    <td>
+                        <input type="text" class="date" placeholder="Enter manually">
+                        <button class="button date-btn" onclick="getDate(this)">USE DEVICE DATE</button>
+                    </td>
+                    <td>
+                        <input type="text" class="place" placeholder="Enter manually">
+                        <button class="button location-btn" onclick="getLocation(this)">USE DEVICE LOCATION</button>
+                    </td>
+                    <td><button class="button submit-btn">SUBMIT</button></td>
+                </tr>
+            </tbody>
+        </table>
+        <script>
+            const video = document.getElementById('liveCamera');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            const fileInput = document.getElementById('fileInput');
+            const captureButton = document.getElementById('captureButton');
+            const submitButton = document.querySelector('.submit-btn');
+            let imageBase64 = null;
+            let imageMimeType = null;
+            let imageFileName = null;
+            let stream = null; //keep track of the camera stream
+            let username = "";
+            let speciesName = "";
+            let date = "";
+            let place = "";
+
+
+            async function startCamera() {
+                try {
+                    const constraints = {
+                        video: {
+                            facingMode: "environment" // Use the rear camera if available.
+                        }
+                    };
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    video.srcObject = stream;
+                    video.onloadedmetadata = () => {
+                        video.play();
+                    };
+                } catch (err) {
+                    console.error("Error accessing camera:", err);
+                    alert("Unable to access camera.  If you are on a phone, make sure you have granted camera permissions in your browser settings.  You can also choose a file instead.");
+                    // Fallback to file input
+                    document.getElementById('liveCamera').style.display = 'none';
+                    document.getElementById('captureButton').style.display = 'none';
+                    document.getElementById('fileInput').style.display = 'block';
+                }
+            }
+            startCamera();
+            captureButton.addEventListener('click', () => {
+                captureImage();
+            });
+
+            fileInput.addEventListener('change', () => {
+                handleFileSelect();
+            });
+            submitButton.addEventListener('click', () => {
+                uploadImage();
+            });
+
+            function getDate(buttonElement) {
+                const dateInput = buttonElement.previousElementSibling;
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+                const day = String(today.getDate()).padStart(2, '0');
+                date = `${year}-${month}-${day}`;
+                dateInput.value = date;
+            }
+
+            function getLocation(buttonElement) {
+                const locationInput = buttonElement.previousElementSibling;
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const latitude = position.coords.latitude;
+                            const longitude = position.coords.longitude;
+                            place = `Latitude: ${latitude}, Longitude: ${longitude}`;
+                            locationInput.value = place;
+                        },
+                        (error) => {
+                            alert(`Error getting location: ${error.message}`);
+                            locationInput.value = "Location unavailable";
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 5000,
+                        }
+                    );
+                } else {
+                    locationInput.value = "Geolocation is not supported by this browser.";
+                }
+            }
+
+
+            function captureImage() {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                imageBase64 = canvas.toDataURL('image/jpeg').split(',')[1];
+                imageMimeType = 'image/jpeg';
+                imageFileName = 'captured_image.jpg';
+                document.getElementById("status").innerText = "Image captured. Ready to submit.";
+                // Stop the camera stream after capturing the image.
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                video.srcObject = null; //clear the videoElement
+            }
+
+            function handleFileSelect() {
+                if (!fileInput.files.length) {
+                    return;
+                }
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onloadend = function () {
+                    imageBase64 = reader.result.split(',')[1];
+                    imageMimeType = file.type;
+                    imageFileName = file.name;
+                    document.getElementById("status").innerText = "File selected. Ready to submit.";
+                };
+                reader.readAsDataURL(file);
+            }
+
+            async function uploadImage() {
+                //get the username, species, and date
+                username = document.querySelector('input[placeholder="Enter username"]').value;
+                speciesName = document.getElementById('speciesInput').value;
+                date = document.querySelector('input[placeholder="Enter manually"]').value;
+                place = document.querySelector('input[placeholder="Enter manually"]').value;
+
+                if (!imageBase64) {
+                    alert("Please capture an image or select a file.");
+                    return;
+                }
+                //construct the filename
+                imageFileName = `${username}_${speciesName}_${date}.jpg`;
+                const response = await fetch("https://script.google.com/macros/s/AKfycbzW8aRLFh9E1WHUuugvvIqOyYBWrMNRmivot0grSBDRb-WX2Se2hCvzIkIdgMaLZG4-8Q/exec", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({
+                        image: imageBase64,
+                        mimetype: imageMimeType,
+                        filename: imageFileName
+                    })
+                });
+                const result = await response.json();
+                document.getElementById("status").innerText = result.status === "success"
+                    ? `Upload successful! Image URL: ${result.url}`
+                    : `Upload failed: ${result.message}`;
+                //clear the image data after upload
+                imageBase64 = null;
+                imageMimeType = null;
+                imageFileName = null;
+                //restart the camera
+                startCamera();
+            }
+        </script>
+        <button class="button add-row">ADD ROW</button>
+        <button class="button" onclick='window.location.href="map.html"'>GO STRAIGHT TO MAP</button>
+      
+        <div id="species-card-container">
+            <div id="species-card">
+                <button id="close-card-button">Close</button>
+                <img id="species-card-img" src="" alt="Species Card">
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const table = document.getElementById("species-records");
+            const addRowBtn = document.querySelector(".add-row");
+            const speciesCardContainer = document.getElementById("species-card-container");
+            const speciesCard = document.getElementById("species-card");
+            const speciesCardImg = document.getElementById("species-card-img");
+            const closeCardButton = document.getElementById("close-card-button");
+            let autocompleteInputValue = "";
+
+            table.addEventListener("click", function(event) {
+                if (event.target.classList.contains("submit-btn")) {
+                    console.log("Submit button clicked!");
+
+                    const row = event.target.closest("tr");
+                    const username = row.cells[0].querySelector("input").value.trim() || "Unknown";
+                    const species = autocompleteInputValue || row.cells[2].querySelector("input").value.trim() || "Not specified"; // Use autocomplete value
+                    const date = row.cells[3].querySelector("input").value.trim() || "No date";
+                    const place = row.cells[4].querySelector("input").value.trim() || "Unknown location";
+
+                    const record = { username, species, date, place };
+                    console.log("Submitting record:", record);
+
+                    fetch("https://script.google.com/macros/s/AKfycbwsG06dGQsqT_22efWAZn9RtadK3JKAoINByzP1KLosycvC-Mv2q0S6Se4fdA84tF9pTw/exec", {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(record)
+                    })
+                    .then(() => {
+                        let speciesNameForURL = species.replace(/ /g, '%20');
+                        const lowerCaseName = speciesNameForURL.toLowerCase();
+                        const capitalizedName = speciesNameForURL.charAt(0).toUpperCase() + speciesNameForURL.slice(1);
+                        const imagePath = `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${capitalizedName}.png`;
+                        const imagePathLower = `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${lowerCaseName}.png`;
+                        const imagePathAllLower = `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${speciesNameForURL.toLowerCase()}.png`;
+
+                        // Check if the image exists
+                        const img = new Image();
+                        img.src = imagePath;
+                        img.onload = () => {
+                            speciesCardImg.src = imagePath;
+                            speciesCardImg.alt = species;
+                            speciesCardContainer.style.display = "flex";
+                        };
+                        img.onerror = () => {
+                            const imgLower = new Image();
+                            imgLower.src = imagePathLower;
+                            imgLower.onload = () => {
+                                speciesCardImg.src = imagePathLower;
+                                speciesCardImg.alt = species;
+                                speciesCardContainer.style.display = "flex";
+                            }
+                            imgLower.onerror = () => {
+                                const imgAllLower = new Image();
+                                imgAllLower.src = imagePathAllLower;
+                                imgAllLower.onload = () => {
+                                    speciesCardImg.src = imagePathAllLower;
+                                    speciesCardImg.alt = species;
+                                    speciesCardContainer.style.display = "flex";
+                                }
+                                imgAllLower.onerror = () => {
+                                    alert(`Card for ${species} not found`);
+                                }
+                            }
+                        }
+
+                    })
+                    .catch(error => console.error("Error:", error));
+                }
+            });
+
+            addRowBtn.addEventListener("click", function() {
+                console.log("Adding a new row");
+                const newRow = document.createElement("tr");
+                newRow.innerHTML = `
+                    <td><input type="text" placeholder="Enter username"></td>
+                    <td>
+                        <div style="max-width:320px;overflow:hidden">
+                            <video id="liveCamera" width="100%" height="auto" autoplay style="display:block"></video>
+                        </div>
+                        <canvas id="canvas" style="display:none"></canvas><br>
+                        <input type="file" id="fileInput" accept="image/*">
+                        <button id="captureButton">Capture Image</button>
+                        <p id="status"></p>
+                    </td>
+                    <td>
+                        <div class="autocomplete">
+                            <input type="text" id="speciesInput" placeholder="Species you think it is">
+                        </div>
+                    </td>
+                    <td>
+                        <input type="text" class="date" placeholder="Enter manually">
+                        <button class="button date-btn" onclick="getDate(this)">USE DEVICE DATE</button>
+                    </td>
+                    <td>
+                        <input type="text" class="place" placeholder="Enter manually">
+                        <button class="button location-btn" onclick="getLocation(this)">USE DEVICE LOCATION</button>
+                    </td>
+                    <td><button class="button submit-btn">SUBMIT</button></td>
+                `;
+                const newCell = newRow.cells[2].querySelector("#speciesInput")
+                autocomplete(newCell, speciesNames);
+                //start the camera for the new row.
+                const videoElement = newRow.querySelector('#liveCamera');
+                const canvasElement = newRow.querySelector('#canvas');
+                const contextElement = canvasElement.getContext('2d');
+                const fileInputElem = newRow.querySelector('#fileInput');
+                const captureButtonElem = newRow.querySelector('#captureButton');
+
+
+                async function startCameraNew(videoElement) {
+                    try {
+                        const constraints = {
+                            video: {
+                                facingMode: "environment"
+                            }
+                        };
+                        stream = await navigator.mediaDevices.getUserMedia(constraints);
+                        videoElement.srcObject = stream;
+                        videoElement.onloadedmetadata = () => {
+                            videoElement.play();
+                        };
+                    } catch (err) {
+                        console.error("Error accessing camera:", err);
+                        alert("Unable to access camera.  If you are on a phone, make sure you have granted camera permissions in your browser settings.  You can also choose a file instead.");
+                        // Fallback to file input
+                        videoElement.style.display = 'none';
+                        captureButtonElem.style.display = 'none';
+                        fileInputElem.style.display = 'block';
+                    }
+                }
+                startCameraNew(videoElement);
+
+                captureButtonElem.addEventListener('click', () => {
+                    captureImageNew(videoElement, canvasElement, contextElement);
+                });
+
+                fileInputElem.addEventListener('change', () => {
+                    handleFileSelectNew(fileInputElem);
+                });
+
+
+                function captureImageNew(videoElement, canvasElement, contextElement) {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                    contextElement.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+                    imageBase64 = canvasElement.toDataURL('image/jpeg').split(',')[1];
+                    imageMimeType = 'image/jpeg';
+                    imageFileName = 'captured_image.jpg';
+                    newRow.querySelector("#status").innerText = "Image captured. Ready to submit.";
+                    // Stop the camera stream after capturing the image.
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                    videoElement.srcObject = null; //clear the videoElement
+                }
+
+                function handleFileSelectNew(fileInputElem) {
+                    if (!fileInputElem.files.length) {
+                        return;
+                    }
+                    const file = fileInputElem.files[0];
+                    const reader = new FileReader();
+                    reader.onloadend = function () {
+                        imageBase64 = reader.result.split(',')[1];
+                        imageMimeType = file.type;
+                        imageFileName = file.name;
+                        newRow.querySelector("#status").innerText = "File selected. Ready to submit.";
+                    };
+                    reader.readAsDataURL(file);
+                }
+
+                table.appendChild(newRow);
+            });
+
+            window.getDate = function(button) {
+                button.previousElementSibling.value = new Date().toISOString().split("T")[0];
+            };
+
+            window.getLocation = function(button) {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        button.previousElementSibling.value = `Lat: ${position.coords.latitude}, Lon: ${position.coords.longitude}`;
+                    });
+                } else {
+                    alert("Geolocation is not supported by this browser.");
+                }
+            };
+
+        });
+    </script>
+</body>
+</html>

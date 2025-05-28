@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Species Identifier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        #app-container {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* More rounded corners */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 100%;
+            max-width: 400px; /* Typical mobile width */
+            display: flex;
+            flex-direction: column;
+            min-height: 90vh; /* Make it taller for mobile view */
+            margin: 1rem;
+        }
+        #camera-feed {
+            width: 100%;
+            height: 300px; /* Larger camera preview */
+            background-color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #888;
+            font-size: 1.2rem;
+            border-bottom: 1px solid #e2e8f0;
+            position: relative; /* For loading indicator */
+        }
+        #camera-feed video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 1.5rem 1.5rem 0 0; /* Rounded top corners */
+        }
+        #captured-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Ensure the whole image is visible */
+            background-color: black; /* Black background for images */
+            display: none; /* Hidden by default */
+            border-radius: 1.5rem 1.5rem 0 0;
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            font-size: 1.5rem;
+            color: #333;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div id="camera-feed" class="relative rounded-t-xl">
+            <video id="video-stream" class="w-full h-full object-cover rounded-t-xl" autoplay playsinline></video>
+            <img id="captured-image" class="w-full h-full object-contain rounded-t-xl" alt="Captured Image">
+            <canvas id="camera-canvas" class="hidden"></canvas>
+            <div id="camera-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500 text-lg" style="display: none;">
+                Camera Feed / Image Preview
+            </div>
+            <div id="camera-loading" class="loading-overlay hidden">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <div class="p-4 flex items-center justify-between bg-gray-50 border-b border-gray-200">
+            <input type="range" id="zoom-slider" min="1" max="5" value="1" step="0.1"
+                   class="flex-grow mr-4 h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer">
+            <button id="take-photo-btn"
+                    class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-full shadow-md
+                           hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75
+                           transition ease-in-out duration-150">
+                Take Photo
+            </button>
+        </div>
+
+        <div class="flex-grow p-4 grid grid-cols-2 gap-4">
+            <div class="col-span-1 bg-gray-100 p-3 rounded-lg flex flex-col items-center justify-center border border-gray-200">
+                <h3 class="text-gray-600 font-medium mb-2">Image Result</h3>
+                <img id="result-image-thumbnail" class="w-full h-auto max-h-32 object-contain rounded-md border border-gray-300"
+                     src="https://placehold.co/100x100/e0e0e0/888888?text=No+Image" alt="Result Thumbnail">
+                <button id="generate-image-btn"
+                        class="mt-2 px-4 py-1 text-sm bg-purple-600 text-white font-semibold rounded-full shadow-sm
+                               hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75
+                               transition ease-in-out duration-150">
+                    Generate Image
+                </button>
+                <div id="image-generation-loading" class="loading-overlay hidden text-sm">
+                    <div class="spinner w-6 h-6"></div>
+                </div>
+            </div>
+            <div class="col-span-1 bg-gray-100 p-3 rounded-lg flex flex-col border border-gray-200">
+                <h3 class="text-gray-600 font-medium mb-2">Identification Results</h3>
+                <p id="identification-results" class="text-gray-700 text-sm overflow-y-auto flex-grow">
+                    Results will appear here after identification.
+                </p>
+                <button id="identify-species-btn"
+                        class="mt-2 px-4 py-1 text-sm bg-green-600 text-white font-semibold rounded-full shadow-sm
+                               hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75
+                               transition ease-in-out duration-150">
+                    Identify Species
+                </button>
+                <div id="identification-loading" class="loading-overlay hidden text-sm">
+                    <div class="spinner w-6 h-6"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 bg-gray-50 border-t border-gray-200">
+            <h3 class="text-gray-600 font-medium mb-2">Links to ID Guides</h3>
+            <div id="id-guides-links" class="text-blue-600 text-sm">
+                <a href="#" class="block hover:underline mb-1">Guide 1: Common Birds</a>
+                <a href="#" class="block hover:underline mb-1">Guide 2: Local Flora</a>
+                <a href="#" class="block hover:underline">Guide 3: Insects</a>
+            </div>
+        </div>
+
+        <div class="p-4 flex items-center justify-between gap-2 bg-gray-50 border-t border-gray-200 rounded-b-xl">
+            <button id="save-image-btn"
+                    class="flex-1 px-4 py-2 bg-yellow-500 text-white font-semibold rounded-full shadow-md text-sm
+                           hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-75
+                           transition ease-in-out duration-150">
+                Save & New
+            </button>
+            <input type="text" id="species-name-input" placeholder="Species name"
+                   class="flex-2 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+            <button id="submit-btn"
+                    class="flex-1 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-full shadow-md text-sm
+                           hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75
+                           transition ease-in-out duration-150">
+                Submit
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, addDoc, onSnapshot, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Firebase
+        let app;
+        let db;
+        let auth;
+        let userId = 'anonymous'; // Default to anonymous
+
+        // Initialize Firebase and authenticate
+        const initializeFirebase = async () => {
+            try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.error("Firebase config is missing. Cannot initialize Firebase.");
+                    return;
+                }
+
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("Firebase authenticated. User ID:", userId);
+                        // Display userId on UI if needed for multi-user context
+                        // document.getElementById('user-id-display').textContent = `User ID: ${userId}`;
+                    } else {
+                        console.log("No user signed in. Attempting anonymous sign-in.");
+                        try {
+                            if (typeof __initial_auth_token !== 'undefined') {
+                                await signInWithCustomToken(auth, __initial_auth_token);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                            userId = auth.currentUser?.uid || crypto.randomUUID(); // Fallback if anonymous sign-in doesn't immediately provide UID
+                            console.log("Anonymous sign-in successful. User ID:", userId);
+                            // document.getElementById('user-id-display').textContent = `User ID: ${userId}`;
+                        } catch (error) {
+                            console.error("Firebase anonymous sign-in failed:", error);
+                            userId = crypto.randomUUID(); // Generate a random ID if auth fails
+                            console.log("Using generated random User ID:", userId);
+                            // document.getElementById('user-id-display').textContent = `User ID: ${userId} (Anonymous/Generated)`;
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+            }
+        };
+
+        // Call Firebase initialization
+        initializeFirebase();
+
+        // --- Camera and Image Handling ---
+        const videoStream = document.getElementById('video-stream');
+        const capturedImage = document.getElementById('captured-image');
+        const cameraCanvas = document.getElementById('camera-canvas');
+        const takePhotoBtn = document.getElementById('take-photo-btn');
+        const resultImageThumbnail = document.getElementById('result-image-thumbnail');
+        const cameraFeedDiv = document.getElementById('camera-feed');
+        const cameraPlaceholder = document.getElementById('camera-placeholder');
+        const cameraLoading = document.getElementById('camera-loading');
+
+        let currentStream;
+        let photoTaken = false;
+        let capturedBase64Image = ''; // Store the captured image as base64
+
+        // Function to start camera feed
+        const startCamera = async () => {
+            cameraLoading.classList.remove('hidden');
+            cameraPlaceholder.style.display = 'none';
+            videoStream.style.display = 'block';
+            capturedImage.style.display = 'none'; // Hide captured image if present
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); // Prefer rear camera
+                videoStream.srcObject = currentStream;
+                videoStream.play();
+                photoTaken = false;
+                cameraLoading.classList.add('hidden');
+            } catch (err) {
+                console.error("Error accessing camera: ", err);
+                cameraFeedDiv.textContent = "Camera access denied or not available.";
+                cameraPlaceholder.style.display = 'flex'; // Show placeholder if camera fails
+                videoStream.style.display = 'none';
+                cameraLoading.classList.add('hidden');
+            }
+        };
+
+        // Function to stop camera feed
+        const stopCamera = () => {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+        };
+
+        // Take photo functionality
+        takePhotoBtn.addEventListener('click', () => {
+            if (videoStream.srcObject) {
+                const context = cameraCanvas.getContext('2d');
+                cameraCanvas.width = videoStream.videoWidth;
+                cameraCanvas.height = videoStream.videoHeight;
+                context.drawImage(videoStream, 0, 0, cameraCanvas.width, cameraCanvas.height);
+                capturedBase64Image = cameraCanvas.toDataURL('image/png'); // Get base64 image
+                capturedImage.src = capturedBase64Image;
+                capturedImage.style.display = 'block';
+                videoStream.style.display = 'none'; // Hide video stream
+                photoTaken = true;
+                stopCamera(); // Stop camera after taking photo
+            } else {
+                console.warn("No camera stream available to take a photo.");
+                // Show a message to the user that camera is not active
+                document.getElementById('identification-results').textContent = "Please ensure camera is active or try generating an image first.";
+            }
+        });
+
+        // --- LLM API Calls ---
+        const identificationResults = document.getElementById('identification-results');
+        const generateImageBtn = document.getElementById('generate-image-btn');
+        const identifySpeciesBtn = document.getElementById('identify-species-btn');
+        const imageGenerationLoading = document.getElementById('image-generation-loading');
+        const identificationLoading = document.getElementById('identification-loading');
+
+        // Function to generate an image using Imagen
+        generateImageBtn.addEventListener('click', async () => {
+            imageGenerationLoading.classList.remove('hidden');
+            resultImageThumbnail.src = "https://placehold.co/100x100/e0e0e0/888888?text=Generating...";
+            try {
+                const prompt = "A high-resolution image of a generic plant or animal for species identification. Focus on clear features.";
+                const payload = { instances: { prompt: prompt }, parameters: { "sampleCount": 1 } };
+                const apiKey = ""; // Canvas will provide this at runtime
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                    const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                    resultImageThumbnail.src = imageUrl;
+                    capturedImage.src = imageUrl; // Also update the main preview
+                    capturedImage.style.display = 'block';
+                    videoStream.style.display = 'none';
+                    photoTaken = true; // Mark as if a photo was taken
+                    identificationResults.textContent = "Image generated. Click 'Identify Species' to proceed.";
+                } else {
+                    identificationResults.textContent = "Failed to generate image. Please try again.";
+                    resultImageThumbnail.src = "https://placehold.co/100x100/e0e0e0/888888?text=Error";
+                    console.error("Image generation failed: No predictions or bytesBase64Encoded found.", result);
+                }
+            } catch (error) {
+                identificationResults.textContent = "Error generating image: " + error.message;
+                resultImageThumbnail.src = "https://placehold.co/100x100/e0e0e0/888888?text=Error";
+                console.error("Error during image generation API call:", error);
+            } finally {
+                imageGenerationLoading.classList.add('hidden');
+            }
+        });
+
+        // Function to identify species using Gemini
+        identifySpeciesBtn.addEventListener('click', async () => {
+            if (!photoTaken || !capturedBase64Image) {
+                identificationResults.textContent = "Please take a photo or generate an image first.";
+                return;
+            }
+
+            identificationLoading.classList.remove('hidden');
+            identificationResults.textContent = "Identifying species...";
+
+            try {
+                const prompt = "Identify the species in this image. Provide a concise name and a brief description of its key features. If you cannot identify, state so.";
+                let chatHistory = [];
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+
+                const payload = {
+                    contents: [
+                        {
+                            role: "user",
+                            parts: [
+                                { text: prompt },
+                                {
+                                    inlineData: {
+                                        mimeType: "image/png",
+                                        data: capturedBase64Image.split(',')[1] // Extract base64 data
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                };
+                const apiKey = ""; // Canvas will provide this at runtime
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    identificationResults.textContent = text;
+                } else {
+                    identificationResults.textContent = "Could not identify species. Please try another image.";
+                    console.error("Species identification failed: No candidates or content found.", result);
+                }
+            } catch (error) {
+                identificationResults.textContent = "Error identifying species: " + error.message;
+                console.error("Error during species identification API call:", error);
+            } finally {
+                identificationLoading.classList.add('hidden');
+            }
+        });
+
+        // --- Save Image & New Functionality ---
+        const saveImageBtn = document.getElementById('save-image-btn');
+        const speciesNameInput = document.getElementById('species-name-input');
+        const submitBtn = document.getElementById('submit-btn');
+
+        saveImageBtn.addEventListener('click', async () => {
+            if (!capturedBase64Image) {
+                console.warn("No image to save.");
+                identificationResults.textContent = "No image to save. Take a photo or generate one.";
+                return;
+            }
+
+            // Save to Firestore (private data for the user)
+            if (db && userId) {
+                try {
+                    const speciesData = {
+                        imageData: capturedBase64Image,
+                        speciesName: speciesNameInput.value || 'Unidentified',
+                        identificationResult: identificationResults.textContent,
+                        timestamp: new Date().toISOString()
+                    };
+                    // Store in private collection: /artifacts/{appId}/users/{userId}/identified_species
+                    const speciesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/identified_species`);
+                    await addDoc(speciesCollectionRef, speciesData);
+                    console.log("Image and data saved to Firestore!");
+                    identificationResults.textContent = "Image and data saved! Ready for a new identification.";
+                    // Reset for new identification
+                    capturedImage.src = '';
+                    capturedImage.style.display = 'none';
+                    videoStream.style.display = 'block';
+                    speciesNameInput.value = '';
+                    identificationResults.textContent = "Results will appear here after identification.";
+                    resultImageThumbnail.src = "https://placehold.co/100x100/e0e0e0/888888?text=No+Image";
+                    photoTaken = false;
+                    capturedBase64Image = '';
+                    startCamera(); // Restart camera for a new photo
+                } catch (e) {
+                    console.error("Error saving document: ", e);
+                    identificationResults.textContent = "Error saving data. Check console for details.";
+                }
+            } else {
+                console.error("Firestore not initialized or user not authenticated.");
+                identificationResults.textContent = "Cannot save: Firestore not ready or user not authenticated.";
+            }
+        });
+
+        submitBtn.addEventListener('click', async () => {
+            if (!capturedBase64Image) {
+                console.warn("No image to submit.");
+                identificationResults.textContent = "No image to submit. Take a photo or generate one.";
+                return;
+            }
+
+            // Submit to Firestore (public data, for sharing/community)
+            if (db && userId) {
+                try {
+                    const submissionData = {
+                        imageData: capturedBase64Image,
+                        speciesName: speciesNameInput.value || 'Unidentified',
+                        identificationResult: identificationResults.textContent,
+                        submittedBy: userId, // User ID for public submissions
+                        timestamp: new Date().toISOString()
+                    };
+                    // Store in public collection: /artifacts/{appId}/public/data/community_submissions
+                    const publicSubmissionsRef = collection(db, `artifacts/${appId}/public/data/community_submissions`);
+                    await addDoc(publicSubmissionsRef, submissionData);
+                    console.log("Submission sent to public collection!");
+                    identificationResults.textContent = "Your submission has been sent to the community!";
+                    // Optionally reset for new identification
+                    capturedImage.src = '';
+                    capturedImage.style.display = 'none';
+                    videoStream.style.display = 'block';
+                    speciesNameInput.value = '';
+                    identificationResults.textContent = "Results will appear here after identification.";
+                    resultImageThumbnail.src = "https://placehold.co/100x100/e0e0e0/888888?text=No+Image";
+                    photoTaken = false;
+                    capturedBase64Image = '';
+                    startCamera(); // Restart camera for a new photo
+                } catch (e) {
+                    console.error("Error submitting document: ", e);
+                    identificationResults.textContent = "Error submitting data. Check console for details.";
+                }
+            } else {
+                console.error("Firestore not initialized or user not authenticated.");
+                identificationResults.textContent = "Cannot submit: Firestore not ready or user not authenticated.";
+            }
+        });
+
+
+        // Start camera when the window loads
+        window.onload = startCamera;
+    </script>
+</body>
+</html>

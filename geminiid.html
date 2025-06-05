@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Species Identification</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Silkscreen&display=swap" rel="stylesheet">
+    <!-- Firebase SDK imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, addDoc, collection, onSnapshot, query, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"; // Import deleteDoc
+
+        // Global variables for Firebase instances and app ID
+        window.firebaseApp = null;
+        window.db = null;
+        window.auth = null;
+        window.currentUserId = null;
+        window.isFirebaseReady = false;
+        window.appId = null; // Declare appId globally
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            try {
+                // Initialize Firebase using global variables provided by the environment
+                window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; // Assign to global appId
+                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.error("Firebase config is empty. Please ensure __firebase_config is correctly set.");
+                    showAlert("Firebase configuration is missing. Data persistence will not work.");
+                    return;
+                }
+
+                firebaseApp = initializeApp(firebaseConfig);
+                db = getFirestore(firebaseApp);
+                auth = getAuth(firebaseApp);
+
+                // Sign in with custom token if available, otherwise anonymously
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUserId = user.uid;
+                        document.getElementById('user-id-display').innerText = `User ID: ${currentUserId}`;
+                        window.isFirebaseReady = true;
+                        // Load existing records after authentication is ready
+                        loadSpeciesRecords();
+                    } else {
+                        currentUserId = null;
+                        document.getElementById('user-id-display').innerText = `User ID: Not authenticated`;
+                        window.isFirebaseReady = true; // Still ready, but no authenticated user
+                         // If not authenticated, ensure at least one blank row for input
+                         if (document.getElementById("species-records").children.length === 0) {
+                            window.addBlankInputRow();
+                         }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error initializing Firebase or signing in:", error);
+                showAlert("Failed to initialize the app. Check console for details.");
+            }
+        });
+
+        // Function to save data to Firestore
+        window.saveRecordToFirestore = async (recordData) => {
+            if (!db || !currentUserId) {
+                showAlert("Database not ready or user not authenticated.");
+                return null;
+            }
+            try {
+                const collectionRef = collection(db, `artifacts/${window.appId}/users/${currentUserId}/species_records`); // Use global appId
+                const docRef = await addDoc(collectionRef, {
+                    ...recordData,
+                    timestamp: serverTimestamp() // Add server timestamp
+                });
+                console.log("Document written with ID: ", docRef.id);
+                return docRef.id;
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                showAlert("Error saving record to database.");
+                return null;
+            }
+        };
+
+        // Function to load data from Firestore in real-time
+        window.loadSpeciesRecords = () => {
+            if (!db || !currentUserId) {
+                console.warn("Cannot load records: Firebase not ready or user not authenticated.");
+                // If not authenticated, and no records loaded, add an initial blank row
+                if (document.getElementById("species-records").children.length === 0) {
+                    window.addBlankInputRow();
+                }
+                return;
+            }
+            const collectionRef = collection(db, `artifacts/${window.appId}/users/${currentUserId}/species_records`); // Use global appId
+            const q = query(collectionRef); // No orderBy to avoid index issues
+
+            onSnapshot(q, (snapshot) => {
+                const existingRecords = [];
+                snapshot.forEach((doc) => {
+                    existingRecords.push({ id: doc.id, ...doc.data() });
+                });
+                displayExistingRecords(existingRecords);
+            }, (error) => {
+                console.error("Error listening to Firestore:", error);
+                showAlert("Error loading existing records.");
+            });
+        };
+
+        // Function to display existing records in the table
+        function displayExistingRecords(records) {
+            const tableBody = document.getElementById("species-records");
+            // Clear existing rows except the first template row if you had one, or clear all and re-add.
+            tableBody.innerHTML = ''; // Clear existing rows to prevent duplicates from onSnapshot
+
+            records.sort((a, b) => (b.timestamp?.toDate() || 0) - (a.timestamp?.toDate() || 0)); // Sort by timestamp descending
+
+            records.forEach(record => {
+                const newRow = document.createElement("tr");
+                newRow.innerHTML = `
+                    <td>
+                        <img src="${record.imageUrl || 'https://placehold.co/100x100?text=No+Image'}" alt="Uploaded Image" style="max-width: 100px; max-height: 100px; display: block; margin: auto;">
+                        <p class="status">Saved: ${record.timestamp ? new Date(record.timestamp.toDate()).toLocaleString() : 'N/A'}</p>
+                    </td>
+                    <td>
+                        <p><strong>Species:</strong> ${record.speciesName}</p>
+                        <p><strong>User:</strong> ${record.username}</p>
+                        <p><strong>Date:</strong> ${record.date}</p>
+                        <p><strong>Place:</strong> ${record.place}</p>
+                        <button class="button view-card-btn" data-species="${record.speciesName}">View Card</button>
+                    </td>
+                    <td>
+                        <button class="button remove-row-btn" data-doc-id="${record.id}">REMOVE</button>
+                    </td>
+                `;
+                tableBody.appendChild(newRow);
+
+                // Add event listener for view card button
+                newRow.querySelector('.view-card-btn').addEventListener('click', (event) => {
+                    displaySpeciesCard(event.target.dataset.species);
+                });
+
+                // Add event listener for remove button (Firestore delete)
+                newRow.querySelector('.remove-row-btn').addEventListener('click', async (event) => {
+                    const docId = event.target.dataset.docId;
+                    try {
+                        const confirmDelete = await showConfirm("Are you sure you want to remove this record?");
+                        if (confirmDelete) {
+                             await deleteDoc(doc(db, `artifacts/${window.appId}/users/${currentUserId}/species_records/${docId}`)); // Use global appId
+                             showAlert("Record removed successfully!");
+                        }
+                    } catch (e) {
+                        console.error("Error removing document: ", e);
+                        showAlert("Error removing record from database.");
+                    }
+                });
+            });
+            // Ensure at least one blank row for new input after displaying existing records
+            if (tableBody.children.length === 0 || !tableBody.lastElementChild.querySelector('.submit-btn')) {
+                 window.addBlankInputRow(); // Use window.addBlankInputRow
+            }
+        }
+
+        // Add a blank input row for new entries
+        window.addBlankInputRow = () => { // Expose to window object
+            const tableBody = document.getElementById("species-records");
+            // Check if the last row is already a blank input row to prevent duplicates
+            if (tableBody.lastElementChild && tableBody.lastElementChild.querySelector('.submit-btn')) {
+                // If the last row is an input row, don't add another blank one.
+                return;
+            }
+            const newRow = document.createElement("tr");
+            newRow.innerHTML = `
+                <td>
+                    <div style="max-width: 320px; overflow: hidden;">
+                        <video class="liveCamera" width="100%" height="auto" autoplay style="display: block;"></video>
+                    </div>
+                    <canvas class="canvas" style="display: none;"></canvas>
+                    <br>
+                    <input type="file" class="fileInput" accept="image/*">
+                    <button class="captureButton">Capture Image</button>
+                    <p class="status"></p>
+                    <div style="text-align: center; margin-top: 10px;">
+                        <button class="zoomIn">+</button>
+                        <button class="zoomOut">-</button>
+                    </div>
+                </td>
+                <td>
+                    <div class="autocomplete">
+                        <input type="text" class="speciesInput" placeholder="Species you think it is">
+                    </div>
+                    <select class="usernameSelect">
+                        <option value="">Select User</option>
+                        <option value="Alice">Alice</option>
+                        <option value="Bob">Bob</option>
+                        <option value="Charlie">Charlie</option>
+                        <option value="Dana">Dana</option>
+                    </select>
+                    <input type="date" class="dateInput">
+                    <input type="text" class="placeInput" placeholder="Place of observation">
+                    <button class="btn identifyButton">Identify Species</button>
+                    <div class="results"></div>
+                </td>
+                <td><button class="button submit-btn">SUBMIT</button></td>
+            `;
+            tableBody.appendChild(newRow);
+            addRowHandlers(newRow); // Apply handlers to the new row
+        };
+    </script>
+    <style>
+        body {
+            font-family: 'Silkscreen', cursive;
+            background-color: skyblue;
+            color: forestgreen;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .button {
+            font-family: 'Silkscreen', cursive;
+            border: 6px solid forestgreen;
+            background: beige;
+            color: forestgreen;
+            padding: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            margin: 5px 0; /* Adjusted margin for better mobile layout */
+            box-shadow: 4px 4px forestgreen;
+            width: calc(100% - 10px); /* Adjust width to account for margin */
+            max-width: 300px; /* Max width for consistency */
+            box-sizing: border-box;
+            transition: all 0.1s ease-in-out;
+        }
+
+        .button:active {
+            box-shadow: 1px 1px forestgreen;
+            transform: translate(3px, 3px);
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+            color: forestgreen;
+            background-color: beige;
+            border: 8px solid forestgreen;
+            box-shadow: 6px 6px forestgreen;
+            table-layout: fixed;
+        }
+
+        thead {
+            background-color: beige;
+        }
+
+        th, td {
+            font-family: 'Silkscreen', cursive;
+            border: 6px solid forestgreen;
+            padding: 12px;
+            text-align: center;
+            background-color: beige;
+            word-wrap: break-word;
+        }
+
+        /* Adjust column widths for better responsiveness */
+        th:nth-child(1), td:nth-child(1) { width: 35%; } /* Photo column */
+        th:nth-child(2), td:nth-child(2) { width: 45%; } /* Species details column */
+        th:nth-child(3), td:nth-child(3) { width: 20%; } /* Submit/Remove column */
+
+
+        input, button, select {
+            font-family: 'Silkscreen', cursive;
+            background: #9CAF88;
+            color: forestgreen;
+            border: 6px solid forestgreen;
+            padding: 8px;
+            box-shadow: 3px 3px forestgreen;
+            width: calc(100% - 12px); /* Adjust width for border */
+            max-width: 300px; /* Max width for consistency */
+            box-sizing: border-box;
+            margin-bottom: 5px; /* Add some spacing */
+        }
+
+        input[type="file"] {
+            padding: 5px; /* Adjust padding for file input */
+        }
+
+        td input,
+        td button,
+        td select {
+            width: 100%;
+            max-width: none; /* Allow full width within td */
+            margin: 0;
+            box-sizing: border-box;
+        }
+        td .button {
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            th, td {
+                padding: 8px;
+                font-size: 14px;
+            }
+            input, button, select, .button {
+                padding: 6px;
+                font-size: 14px;
+                width: 100%;
+            }
+            .container {
+                padding: 10px;
+            }
+            table {
+                display: block; /* Make table behave like a block for full width */
+                overflow-x: auto; /* Allow horizontal scrolling on small screens if needed */
+            }
+            thead, tbody, th, td, tr {
+                display: block; /* Make table elements stack on small screens */
+            }
+            tr {
+                margin-bottom: 15px;
+                border: 8px solid forestgreen; /* Add border to individual rows */
+                box-shadow: 6px 6px forestgreen;
+            }
+            td:nth-child(1), td:nth-child(2), td:nth-child(3) {
+                width: auto; /* Reset width for stacking */
+                text-align: left;
+            }
+            td:nth-child(1) { /* Photo column */
+                border-bottom: none;
+            }
+            td:nth-child(2) { /* Species details column */
+                border-top: none;
+                border-bottom: none;
+            }
+            td:nth-child(3) { /* Submit/Remove column */
+                border-top: none;
+                text-align: center;
+            }
+        }
+
+        #species-card-container, #custom-alert-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; /* Higher z-index for modals */
+        }
+
+        #species-card, #custom-alert-modal > div {
+            width: 200px;
+            height: auto;
+            border-radius: 8px;
+            text-align: center;
+            font-family: 'Arial', sans-serif;
+            background-color: beige;
+            color: forestgreen;
+            padding: 10px;
+            border: 6px solid forestgreen;
+            box-shadow: 4px 4px forestgreen;
+            position: relative; /* For close button positioning */
+        }
+
+        #species-card img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 4px;
+        }
+
+        #close-card-button, #custom-alert-ok-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #f00;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 2px 2px darkred;
+        }
+        #custom-alert-ok-button {
+            position: static; /* Make it flow with content */
+            margin-top: 15px;
+            background-color: forestgreen;
+            box-shadow: 2px 2px #0a4f0a;
+        }
+
+        #close-card-button:hover, #custom-alert-ok-button:hover {
+            background-color: #ff4500;
+        }
+
+        .autocomplete {
+            position: relative;
+            display: inline-block;
+            width: 100%; /* Ensure it takes full available width */
+        }
+
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid #4CAF50;
+            border-bottom: none;
+            border-top: none;
+            z-index: 99; /* Lower than modal, higher than general content */
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #fff;
+            text-align: left; /* Align text to left */
+        }
+
+        .autocomplete-items div {
+            padding: 10px;
+            cursor: pointer;
+            background-color: #fff;
+            color: #000;
+            border-bottom: 1px solid #d4d4d4;
+        }
+
+        .autocomplete-items div:hover {
+            background-color: #4CAF50;
+            color: #fff;
+        }
+
+        .autocomplete-active {
+            background-color: #4CAF50 !important;
+            color: #fff;
+        }
+
+        #user-id-display {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: forestgreen;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Species Identification Log</h1>
+    <p id="user-id-display">User ID: Loading...</p>
+    <table>
+        <thead>
+            <tr>
+                <th>PHOTO</th>
+                <th>DETAILS</th>
+                <th>ACTION</th>
+            </tr>
+        </thead>
+        <tbody id="species-records">
+            <!-- Initial row will be added dynamically by loadSpeciesRecords or addBlankInputRow -->
+        </tbody>
+    </table>
+    <button class="button add-row">ADD ROW</button>
+    <button class="button" onclick="window.location.href='map.html';">GO STRAIGHT TO MAP</button>
+
+    <!-- Species Card Display -->
+    <div id="species-card-container">
+        <div id="species-card">
+            <button id="close-card-button">X</button>
+            <img id="species-card-img" src="" alt="Species Card">
+            <p id="species-card-name"></p>
+        </div>
+    </div>
+
+    <!-- Custom Alert Modal -->
+    <div id="custom-alert-modal">
+        <div>
+            <p id="custom-alert-message"></p>
+            <button id="custom-alert-ok-button" class="button">OK</button>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="custom-confirm-modal" style="display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); justify-content: center; align-items: center;">
+        <div style="background-color: beige; margin: auto; padding: 20px; border: 6px solid forestgreen; border-radius: 8px; box-shadow: 4px 4px forestgreen; width: 80%; max-width: 400px; text-align: center;">
+            <p id="custom-confirm-message" style="color: forestgreen; font-family: 'Silkscreen', cursive;"></p>
+            <button id="custom-confirm-yes-button" class="button" style="margin-top: 15px; margin-right: 10px;">Yes</button>
+            <button id="custom-confirm-no-button" class="button" style="margin-top: 15px;">No</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let stream = null;
+    let currentZoom = 1;
+    let mobilenetModel = null; // Store the loaded model
+
+    // Predefined list of species for autocomplete
+    const speciesNames = [
+        "Dog", "Cat", "Bird", "Fish", "Elephant", "Lion", "Tiger", "Bear", "Wolf", "Fox",
+        "Deer", "Rabbit", "Squirrel", "Hedgehog", "Owl", "Eagle", "Penguin", "Dolphin", "Whale", "Shark",
+        "Snake", "Frog", "Lizard", "Turtle", "Crocodile", "Spider", "Butterfly", "Bee", "Ant", "Ladybug",
+        "Cow", "Horse", "Pig", "Sheep", "Goat", "Chicken", "Duck", "Goose", "Turkey", "Donkey",
+        "Sunflower", "Rose", "Tulip", "Lily", "Orchid", "Daisy", "Fern", "Oak", "Pine", "Maple"
+    ];
+
+    // Custom Alert Modal Function
+    function showAlert(message) {
+        const modal = document.getElementById('custom-alert-modal');
+        const msgElem = document.getElementById('custom-alert-message');
+        const okBtn = document.getElementById('custom-alert-ok-button');
+
+        msgElem.innerText = message;
+        modal.style.display = 'flex'; // Use flex to center
+
+        okBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+    }
+
+    // Custom Confirmation Modal Function
+    function showConfirm(message) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('custom-confirm-modal');
+            const msgElem = document.getElementById('custom-confirm-message');
+            const yesBtn = document.getElementById('custom-confirm-yes-button');
+            const noBtn = document.getElementById('custom-confirm-no-button');
+
+            msgElem.innerText = message;
+            modal.style.display = 'flex';
+
+            yesBtn.onclick = () => {
+                modal.style.display = 'none';
+                resolve(true);
+            };
+
+            noBtn.onclick = () => {
+                modal.style.display = 'none';
+                resolve(false);
+            };
+        });
+    }
+
+    async function startCamera(videoElement, canvasElement) { // Added canvasElement parameter
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            videoElement.srcObject = stream;
+            videoElement.onloadedmetadata = () => {
+                videoElement.play();
+                const track = stream.getVideoTracks()[0];
+                if ('zoom' in track.getSettings()) {
+                    track.applyConstraints({ advanced: [{ zoom: currentZoom }] });
+                }
+            };
+            videoElement.style.display = 'block'; // Show video element
+            canvasElement.style.display = 'none'; // Hide canvas when camera starts
+        } catch (err) {
+            console.error("Error accessing camera:", err);
+            showAlert("Unable to access camera. Make sure permissions are granted.");
+        }
+    }
+
+    function stopCamera(videoElement) {
+        if (videoElement && videoElement.srcObject) {
+            videoElement.srcObject.getTracks().forEach(track => track.stop());
+            videoElement.srcObject = null;
+        }
+    }
+
+    function captureImage(videoElement, canvasElement, statusElement) {
+        if (!videoElement.srcObject) {
+            showAlert("No live camera stream to capture from. Please start the camera or select a file.");
+            return null;
+        }
+
+        canvasElement.width = videoElement.videoWidth;
+        canvasElement.height = videoElement.videoHeight;
+        const context = canvasElement.getContext('2d');
+        context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+
+        // Hide video, show canvas
+        videoElement.style.display = 'none';
+        canvasElement.style.display = 'block';
+
+        statusElement.innerText = "Image captured.";
+        return {
+            imageBase64: canvasElement.toDataURL('image/jpeg').split(',')[1],
+            imageMimeType: 'image/jpeg',
+            imageFileName: 'captured_image.jpg'
+        };
+    }
+
+    // Handles file selection and returns image data
+    function handleFileSelect(fileInputElement, statusElement, videoElement, canvasElement) {
+        if (!fileInputElement.files.length) {
+            return null;
+        }
+        const file = fileInputElement.files[0];
+        const reader = new FileReader();
+
+        reader.onloadend = function () {
+            // Display the selected image on the canvas
+            const img = new Image();
+            img.onload = () => {
+                canvasElement.width = img.width;
+                canvasElement.height = img.height;
+                const ctx = canvasElement.getContext('2d');
+                ctx.drawImage(img, 0, 0, img.width, img.height);
+                videoElement.style.display = 'none'; // Hide video if file is selected
+                canvasElement.style.display = 'block'; // Show canvas
+            };
+            img.src = reader.result;
+
+            statusElement.innerText = "File selected.";
+            fileInputElement.closest('tr').selectedImageData = {
+                imageBase64: reader.result.split(',')[1],
+                imageMimeType: file.type,
+                imageFileName: file.name
+            };
+        };
+        reader.readAsDataURL(file);
+        return null; // The result is handled asynchronously in onloadend
+    }
+
+    async function uploadImage(imageBase664, imageMimeType, imageFileName, statusElement) {
+        if (!imageBase664) {
+            showAlert("No image data to upload. Please capture or select an image.");
+            return null;
+        }
+        statusElement.innerText = "Uploading...";
+        try {
+            const response = await fetch("https://script.google.com/macros/s/AKfycbzW8aRLFh9E1WHUuugvvIqOyYBWrMNRmivot0grSBDRb-WX2Se2hCvzIkIdgMaLZG4-8Q/exec", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({
+                    image: imageBase664,
+                    mimetype: imageMimeType,
+                    filename: imageFileName // Use filename provided, or create one unique
+                })
+            });
+            const result = await response.json();
+            if (result.status === "success") {
+                statusElement.innerText = `Upload successful!`;
+            } else {
+                statusElement.innerText = `Upload failed: ${result.message}`;
+            }
+            return result;
+        } catch (error) {
+            console.error("Error uploading image:", error);
+            statusElement.innerText = "Upload failed due to network error.";
+            showAlert("Image upload failed. Please try again.");
+            return null;
+        }
+    }
+
+    // Autocomplete function (re-used and adapted from user's original code)
+    function autocomplete(inp, arr) {
+        let currentFocus;
+        inp.addEventListener("input", function(e) {
+            let a, b, i, val = this.value;
+            closeAllLists();
+            if (!val) { return false;}
+            currentFocus = -1;
+            a = document.createElement("DIV");
+            a.setAttribute("id", this.id + "autocomplete-list");
+            a.setAttribute("class", "autocomplete-items");
+            this.parentNode.appendChild(a);
+            for (i = 0; i < arr.length; i++) {
+                if (arr[i].substr(0, val.length).toUpperCase() == val.toUpperCase()) {
+                    b = document.createElement("DIV");
+                    b.innerHTML = "<strong>" + arr[i].substr(0, val.length) + "</strong>";
+                    b.innerHTML += arr[i].substr(val.length);
+                    b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
+                    b.addEventListener("click", function(e) {
+                        inp.value = this.getElementsByTagName("input")[0].value;
+                        inp.closest('tr').querySelector('.speciesInput').value = inp.value; // Update the actual input
+                        closeAllLists();
+                    });
+                    a.appendChild(b);
+                }
+            }
+        });
+
+        inp.addEventListener("keydown", function(e) {
+            let x = document.getElementById(this.id + "autocomplete-list");
+            if (x) x = x.getElementsByTagName("div");
+            if (e.keyCode == 40) { // Arrow Down
+                currentFocus++;
+                addActive(x);
+            } else if (e.keyCode == 38) { // Arrow Up
+                currentFocus--;
+                addActive(x);
+            } else if (e.keyCode == 13) { // Enter
+                e.preventDefault();
+                if (currentFocus > -1) {
+                    if (x) x[currentFocus].click();
+                }
+            }
+        });
+
+        function addActive(x) {
+            if (!x) return false;
+            removeActive(x);
+            if (currentFocus >= x.length) currentFocus = 0;
+            if (currentFocus < 0) currentFocus = (x.length - 1);
+            x[currentFocus].classList.add("autocomplete-active");
+        }
+
+        function removeActive(x) {
+            for (let i = 0; i < x.length; i++) {
+                x[i].classList.remove("autocomplete-active");
+            }
+        }
+
+        function closeAllLists(elmnt) {
+            const x = document.getElementsByClassName("autocomplete-items");
+            for (let i = 0; i < x.length; i++) {
+                if (elmnt != x[i] && elmnt != inp) {
+                    x[i].parentNode.removeChild(x[i]);
+                }
+            }
+        }
+        document.addEventListener("click", function (e) {
+            closeAllLists(e.target);
+        });
+    }
+
+    async function identifySpeciesInRow(row) {
+        const imageInput = row.querySelector('.fileInput');
+        const videoElement = row.querySelector('.liveCamera');
+        const canvasElement = row.querySelector('.canvas');
+        const resultsDiv = row.querySelector('.results');
+        resultsDiv.innerHTML = '<h2>Results:</h2>';
+
+        if (!mobilenetModel) {
+            resultsDiv.innerHTML += '<div>Loading AI model...</div>';
+            mobilenetModel = await mobilenet.load();
+            resultsDiv.innerHTML = '<h2>Results:</h2>'; // Clear loading message
+        }
+
+        let imgElementToClassify = null;
+        let imageSourceReady = false;
+
+        if (imageInput.files.length > 0) {
+            // Prioritize selected file
+            const file = imageInput.files[0];
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            await new Promise(resolve => img.onload = resolve);
+            imgElementToClassify = img;
+            imageSourceReady = true;
+        } else if (canvasElement.style.display === 'block' && canvasElement.width > 0) {
+            // If image was captured and shown on canvas
+            imgElementToClassify = canvasElement;
+            imageSourceReady = true;
+        } else {
+            showAlert("Please capture an image using the camera or select a file to identify.");
+            return;
+        }
+
+        if (imageSourceReady && imgElementToClassify) {
+            try {
+                resultsDiv.innerHTML += '<div>Identifying...</div>';
+                const predictions = await mobilenetModel.classify(imgElementToClassify);
+                resultsDiv.innerHTML = '<h2>Results:</h2>'; // Clear "Identifying..."
+
+                if (predictions && predictions.length > 0) {
+                    predictions.forEach(prediction => {
+                        const line = document.createElement('div');
+                        line.innerHTML = `<strong>${prediction.className}</strong> - ${(prediction.probability * 100).toFixed(2)}%`;
+                        resultsDiv.appendChild(line);
+                    });
+                } else {
+                    resultsDiv.innerHTML += '<div>No clear identification found.</div>';
+                }
+            } catch (error) {
+                resultsDiv.innerHTML += '<div style="color:red;">Error processing image for identification.</div>';
+                console.error('Error during classification:', error);
+            }
+        } else {
+             resultsDiv.innerHTML += '<div style="color:red;">No image available for classification.</div>';
+        }
+    }
+
+    function displaySpeciesCard(speciesName) {
+        const speciesCardContainer = document.getElementById("species-card-container");
+        const speciesCardImg = document.getElementById("species-card-img");
+        const speciesCardName = document.getElementById("species-card-name");
+
+        speciesCardName.innerText = speciesName; // Display species name on card
+
+        let speciesNameForURL = encodeURIComponent(speciesName.replace(/ /g, '_')); // Replace spaces with underscores for URL
+        const possibleImagePaths = [
+            `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${speciesNameForURL}.png`, // Original case
+            `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${speciesNameForURL.toLowerCase()}.png`, // All lowercase
+            `https://raw.githubusercontent.com/boobalootoo/CARDDECKDONOTEDIT/main/${speciesNameForURL.charAt(0).toUpperCase() + speciesNameForURL.slice(1).toLowerCase()}.png` // Capitalize first letter, rest lowercase
+        ];
+
+        let imageFound = false;
+        let attemptLoad = (index) => {
+            if (index >= possibleImagePaths.length) {
+                showAlert(`Card for "${speciesName}" not found. Displaying placeholder.`);
+                speciesCardImg.src = `https://placehold.co/200x200/cccccc/000000?text=${encodeURIComponent(speciesName)}`;
+                speciesCardImg.alt = "Placeholder image for " + speciesName;
+                speciesCardContainer.style.display = "flex";
+                return;
+            }
+
+            const img = new Image();
+            img.src = possibleImagePaths[index];
+            img.onload = () => {
+                speciesCardImg.src = possibleImagePaths[index];
+                speciesCardImg.alt = speciesName;
+                speciesCardContainer.style.display = "flex";
+                imageFound = true;
+            };
+            img.onerror = () => {
+                attemptLoad(index + 1); // Try next path
+            };
+        };
+
+        attemptLoad(0); // Start loading from the first path
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const addRowBtn = document.querySelector(".add-row");
+        const speciesCardContainer = document.getElementById("species-card-container");
+        const closeCardButton = document.getElementById("close-card-button");
+
+        // Load Mobilenet model once globally
+        mobilenet.load().then(model => {
+            mobilenetModel = model;
+            console.log("MobileNet model loaded.");
+        }).catch(err => {
+            console.error("Failed to load MobileNet model:", err);
+            showAlert("Failed to load AI model. Identification feature may not work.");
+        });
+
+        // Event listener for adding a new blank row
+        addRowBtn.addEventListener("click", function() {
+            window.addBlankInputRow(); // Use the global function
+        });
+
+        // Close species card button
+        closeCardButton.addEventListener('click', () => {
+            speciesCardContainer.style.display = 'none';
+        });
+
+        // Initial setup for the first row if no records are loaded
+        // This is now largely handled by the onAuthStateChanged in the module script
+        // which calls loadSpeciesRecords, and then loadSpeciesRecords calls addBlankInputRow
+        // if no records are present or after displaying existing ones.
+    });
+
+    // This function sets up all event listeners for a given row
+    function addRowHandlers(row) {
+        const videoElement = row.querySelector(".liveCamera");
+        const canvasElement = row.querySelector(".canvas");
+        const fileInputElement = row.querySelector(".fileInput");
+        const captureButtonElement = row.querySelector(".captureButton");
+        const submitButtonElement = row.querySelector(".submit-btn");
+        const zoomInButtonElement = row.querySelector(".zoomIn");
+        const zoomOutButtonElement = row.querySelector(".zoomOut");
+        const statusElement = row.querySelector(".status");
+        const speciesInput = row.querySelector(".speciesInput"); // Use class for species input
+        const identifyButton = row.querySelector(".identifyButton");
+        const usernameSelect = row.querySelector(".usernameSelect");
+        const dateInput = row.querySelector(".dateInput");
+        const placeInput = row.querySelector(".placeInput");
+
+        // Initialize camera for the new row, passing both video and canvas elements
+        startCamera(videoElement, canvasElement);
+
+        zoomInButtonElement.addEventListener('click', () => {
+            const track = videoElement.srcObject?.getVideoTracks()[0];
+            if (track && 'zoom' in track.getSettings()) {
+                currentZoom = Math.min(currentZoom + 0.1, 10);
+                track.applyConstraints({ advanced: [{ zoom: currentZoom }] });
+            }
+        });
+
+        zoomOutButtonElement.addEventListener('click', () => {
+            const track = videoElement.srcObject?.getVideoTracks()[0];
+            if (track && 'zoom' in track.getSettings()) {
+                currentZoom = Math.max(currentZoom - 0.1, 1);
+                track.applyConstraints({ advanced: [{ zoom: currentZoom }] });
+            }
+        });
+
+        captureButtonElement.addEventListener('click', () => {
+            const imageData = captureImage(videoElement, canvasElement, statusElement);
+            if (imageData) {
+                row.capturedImageData = imageData; // Store image data directly on the row element
+                stopCamera(videoElement); // Stop camera after capture
+            }
+        });
+
+        fileInputElement.addEventListener('change', () => {
+            handleFileSelect(fileInputElement, statusElement, videoElement, canvasElement);
+            stopCamera(videoElement); // Stop camera if file is selected
+        });
+
+        identifyButton.addEventListener('click', () => {
+            identifySpeciesInRow(row);
+        });
+
+        submitButtonElement.addEventListener('click', async () => {
+            if (!window.isFirebaseReady) {
+                showAlert("Application is still loading. Please wait.");
+                return;
+            }
+
+            const username = usernameSelect.value.trim();
+            const speciesName = speciesInput.value.trim();
+            const date = dateInput.value.trim();
+            const place = placeInput.value.trim();
+            let imageData = row.capturedImageData; // Get stored image data
+
+            if (!username) { showAlert("Please select a username."); return; }
+            if (!speciesName) { showAlert("Please enter a species name."); return; }
+            if (!date) { showAlert("Please enter a date."); return; }
+            if (!place) { showAlert("Please enter a place."); return; }
+            if (!imageData && !fileInputElement.files.length) { // Check if either captured or file input has data
+                showAlert("Please capture an image or select a file to submit.");
+                return;
+            }
+
+            // If file input has newer data, use it
+            if (fileInputElement.files.length > 0) {
+                 const file = fileInputElement.files[0];
+                 const reader = new FileReader();
+                 await new Promise(resolve => {
+                     reader.onloadend = () => {
+                         imageData = {
+                             imageBase64: reader.result.split(',')[1],
+                             imageMimeType: file.type,
+                             imageFileName: file.name
+                         };
+                         resolve();
+                     };
+                     reader.readAsDataURL(file);
+                 });
+            }
+
+
+            statusElement.innerText = "Submitting...";
+            const fileNameForUpload = `${username.replace(/ /g, '_')}_${speciesName.replace(/ /g, '_')}_${date}.jpg`;
+            const uploadResult = await uploadImage(
+                imageData.imageBase64,
+                imageData.imageMimeType,
+                fileNameForUpload,
+                statusElement
+            );
+
+            if (uploadResult && uploadResult.status === "success") {
+                const recordData = {
+                    username: username,
+                    speciesName: speciesName,
+                    date: date,
+                    place: place,
+                    imageUrl: uploadResult.url // Store the URL from Google Apps Script
+                };
+                const docId = await window.saveRecordToFirestore(recordData);
+                if (docId) {
+                    showAlert("Record submitted successfully!");
+                    displaySpeciesCard(speciesName); // Show the species card
+                    // Clear inputs and reset for new entry
+                    speciesInput.value = '';
+                    usernameSelect.value = '';
+                    dateInput.value = '';
+                    placeInput.value = '';
+                    statusElement.innerText = '';
+                    row.capturedImageData = null; // Clear captured image data for the row
+                    // Reset photo section to camera live view
+                    canvasElement.style.display = 'none';
+                    videoElement.style.display = 'block';
+                    startCamera(videoElement, canvasElement); // Pass canvasElement here
+                    fileInputElement.value = ''; // Clear file input
+                    row.querySelector('.results').innerHTML = ''; // Clear identification results
+                }
+            } else {
+                showAlert("Submission failed. Image upload might have failed.");
+            }
+        });
+
+        // Initialize autocomplete for the species input in this specific row
+        autocomplete(speciesInput, speciesNames);
+
+        // Set current date as default for date input
+        dateInput.valueAsDate = new Date();
+    }
+
+</script>
+</body>
+</html>

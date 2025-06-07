@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Species Identification</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Silkscreen&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Silkscreen', cursive;
+            background-color: skyblue;
+            color: forestgreen;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 90%;
+            max-width: 500px;
+            padding: 0;
+            background-color: beige;
+            border: 8px solid forestgreen;
+            border-radius: 0;
+        }
+
+        .horizontal-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: stretch;
+            width: 100%;
+            margin-bottom: 0;
+        }
+
+        input[type="file"],
+        button,
+        input[type="text"] {
+            font-family: 'Silkscreen', cursive;
+            color: forestgreen;
+            border: 6px solid forestgreen;
+            padding: 12px; /* Re-added padding for visual appearance */
+            margin: 0;
+            border-radius: 0;
+            position: relative;
+            z-index: 1;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .horizontal-group > input[type="file"],
+        .horizontal-group > button,
+        .horizontal-group > input[type="text"] {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .horizontal-group > *:not(:first-child) {
+            margin-left: -6px;
+        }
+
+        .input-group {
+            width: 100%;
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .button {
+            background: #9CAF88;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background 0.3s ease;
+        }
+
+        .button:hover {
+            background: #B2D8B2;
+        }
+
+        input[type="text"],
+        input[type="file"] {
+            background: #E8E2D6;
+        }
+
+        .video-container {
+            width: 100%;
+            max-width: unset;
+            overflow: hidden;
+            border: 6px solid forestgreen;
+            border-radius: 0;
+            margin: 0 auto 0 auto;
+        }
+
+        .liveCamera {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 0;
+        }
+
+        .canvas {
+            display: none;
+        }
+
+        .status {
+            color: darkgreen;
+            margin-top: 0;
+            font-size: 16px;
+            margin-bottom: 0;
+            width: 100%;
+        }
+
+        #results {
+            margin-top: 0;
+            border-top: 2px solid forestgreen;
+            padding-top: 0;
+            text-align: left;
+            width: 100%;
+            margin-bottom: 0;
+        }
+
+        #results h2 {
+            text-align: center;
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                width: 95%;
+                padding: 0;
+            }
+
+            .button {
+                font-size: 16px;
+                padding: 0;
+            }
+
+            input[type="text"],
+            input[type="file"] {
+                padding: 0;
+                font-size: 14px;
+            }
+
+            .status {
+                font-size: 14px;
+            }
+
+            .horizontal-group {
+                flex-direction: column;
+                gap: 0;
+            }
+
+            .horizontal-group > input[type="file"],
+            .horizontal-group > button,
+            .horizontal-group > input[type="text"] {
+                width: 100%;
+                min-width: unset;
+                margin-left: 0;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>SPECIES IDENTIFICATION</h2>
+        <div class="input-group">
+            <div class="video-container">
+                <video class="liveCamera" autoplay></video>
+            </div>
+            <canvas class="canvas"></canvas>
+            
+            <div class="horizontal-group">
+                <input type="file" class="fileInput" accept="image/*">
+                <button class="button captureButton">CAPTURE IMAGE</button>
+            </div>
+            <p class="status"></p>
+        </div>
+
+        <div class="input-group">
+            <div class="horizontal-group">
+                <input type="text" id="speciesInput" placeholder="SPECIES YOU THINK IT IS">
+                <button class="button" onclick="identifySpecies()">IDENTIFY SPECIES</button>
+            </div>
+            <div id="results"></div>
+        </div>
+
+        <div class="horizontal-group">
+            <button class="button add-row-btn">ADD NEW ENTRY</button>
+            <button class="button submit-btn">SUBMIT</button>
+        </div>
+    </div>
+
+    <script>
+        let stream = null;
+        let capturedImageBase64 = null;
+        let capturedImageMimeType = null;
+        let capturedImageFileName = null;
+
+        async function startCamera(videoElement) {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                videoElement.srcObject = stream;
+                videoElement.onloadedmetadata = () => {
+                    videoElement.play();
+                };
+            } catch (err) {
+                console.error("Error accessing camera:", err);
+                displayMessage("Unable to access camera. Please ensure permissions are granted.", "red");
+            }
+        }
+
+        function stopCamera(stream) {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        function captureImage(videoElement, canvasElement, statusElement) {
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            const context = canvasElement.getContext('2d');
+            context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+            const imageBase64Data = canvasElement.toDataURL('image/jpeg').split(',')[1];
+            const imageMimeTypeData = 'image/jpeg';
+            const imageFileNameData = 'captured_image.jpg';
+            statusElement.innerText = "Image captured. Ready to submit.";
+            stopCamera(videoElement.srcObject);
+            videoElement.srcObject = null;
+            return { imageBase64: imageBase64Data, imageMimeType: imageMimeTypeData, imageFileName: imageFileNameData };
+        }
+
+        function handleFileSelect(fileInputElement, statusElement) {
+            return new Promise((resolve) => {
+                if (!fileInputElement.files.length) {
+                    resolve(null);
+                    return;
+                }
+                const file = fileInputElement.files[0];
+                const reader = new FileReader();
+                reader.onloadend = function () {
+                    const imageBase64Data = reader.result.split(',')[1];
+                    const imageMimeTypeData = file.type;
+                    const imageFileNameData = file.name;
+                    statusElement.innerText = "File selected. Ready to submit.";
+                    resolve({ imageBase64: imageBase64Data, imageMimeType: imageMimeTypeData, imageFileName: imageFileNameData });
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function uploadImage(imageBase64, imageMimeType, imageFileName, username, speciesName, date, place, statusElement) {
+            if (!imageBase64) {
+                displayMessage("Please capture an image or select a file.", "red");
+                return null;
+            }
+            const finalFileName = `${username}_${speciesName}_${date}.jpg`;
+            try {
+                const response = await fetch("https://script.google.com/macros/s/AKfycbzW8aRLFh9E1WHUuugvvIqOyYBWrMNRmivot0grSBDRb-WX2Se2hCvzIkIdgMaLZG4-8Q/exec", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({
+                        image: imageBase64,
+                        mimetype: imageMimeType,
+                        filename: finalFileName
+                    })
+                });
+                const result = await response.json();
+                statusElement.innerText = result.status === "success"
+                    ? `Upload successful! Image URL: ${result.url}`
+                    : `Upload failed: ${result.message}`;
+                return result;
+            } catch (error) {
+                console.error("Upload error:", error);
+                displayMessage("Error uploading image. Please check your network.", "red");
+                statusElement.innerText = "Upload failed due to network error.";
+                return null;
+            }
+        }
+
+        function displayMessage(message, color = "black") {
+            const messageBox = document.createElement("div");
+            messageBox.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: white;
+                padding: 0;
+                border: 2px solid ${color};
+                border-radius: 0;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                z-index: 1000;
+                color: ${color};
+                font-family: 'Silkscreen', cursive;
+                font-size: 18px;
+            `;
+            messageBox.innerText = message;
+            document.body.appendChild(messageBox);
+            setTimeout(() => {
+                document.body.removeChild(messageBox);
+            }, 3000);
+        }
+
+        function resetInputBlock() {
+            const videoElement = document.querySelector(".liveCamera");
+            const statusElement = document.querySelector(".status");
+            const speciesInput = document.getElementById("speciesInput");
+            const fileInputElement = document.querySelector(".fileInput");
+
+            capturedImageBase64 = null;
+            capturedImageMimeType = null;
+            capturedImageFileName = null;
+            speciesInput.value = "";
+            fileInputElement.value = "";
+            statusElement.innerText = "";
+            document.getElementById('results').innerHTML = '';
+
+            if (stream) {
+                stopCamera(stream);
+            }
+            videoElement.srcObject = null;
+            startCamera(videoElement);
+            displayMessage("Ready for a new entry!", "darkgreen");
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const videoElement = document.querySelector(".liveCamera");
+            const canvasElement = document.querySelector(".canvas");
+            const fileInputElement = document.querySelector(".fileInput");
+            const captureButtonElement = document.querySelector(".captureButton");
+            const submitButtonElement = document.querySelector(".submit-btn");
+            const addRowButtonElement = document.querySelector(".add-row-btn");
+            const statusElement = document.querySelector(".status");
+            const speciesInput = document.getElementById("speciesInput");
+
+            startCamera(videoElement);
+
+            captureButtonElement.addEventListener('click', () => {
+                const imageData = captureImage(videoElement, canvasElement, statusElement);
+                capturedImageBase64 = imageData.imageBase64;
+                capturedImageMimeType = imageData.imageMimeType;
+                capturedImageFileName = imageData.imageFileName;
+            });
+
+            fileInputElement.addEventListener('change', async () => {
+                const fileData = await handleFileSelect(fileInputElement, statusElement);
+                if (fileData) {
+                    capturedImageBase64 = fileData.imageBase64;
+                    capturedImageMimeType = fileData.imageMimeType;
+                    capturedImageFileName = fileData.imageFileName;
+                    stopCamera(stream);
+                    videoElement.srcObject = null;
+                }
+            });
+
+            submitButtonElement.addEventListener('click', async () => {
+                const username = "User";
+                const speciesName = speciesInput.value.trim() || "Not specified"; 
+                const date = new Date().toISOString().slice(0, 10);
+                const place = "Unknown location";
+
+                const result = await uploadImage(
+                    capturedImageBase64,
+                    capturedImageMimeType,
+                    capturedImageFileName,
+                    username,
+                    speciesName,
+                    date,
+                    place,
+                    statusElement
+                );
+
+                if (result && result.status === "success") {
+                    displayMessage("Submission successful!", "green");
+                    resetInputBlock();
+                } else {
+                    displayMessage("Submission failed. Please try again.", "red");
+                }
+            });
+
+            addRowButtonElement.addEventListener('click', resetInputBlock);
+        });
+
+        /**
+         * Identifies species in the uploaded image using a pre-trained MobileNet model.
+         */
+        async function identifySpecies() {
+            const model = await mobilenet.load();
+            const imageInput = document.querySelector('.fileInput');
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<h2>AI Species Prediction:</h2>';
+
+            try {
+                if (imageInput.files.length > 0) {
+                    for (const file of imageInput.files) {
+                        const img = document.createElement('img');
+                        img.src = await new Promise(resolve => {
+                            const reader = new FileReader();
+                            reader.onload = e => resolve(e.target.result);
+                            reader.readAsDataURL(file);
+                        });
+                        await img.decode();
+                        const predictions = await model.classify(img);
+                        predictions.forEach(prediction => {
+                            const line = document.createElement('div');
+                            line.innerHTML = `<strong>${prediction.className}</strong> - ${(prediction.probability * 100).toFixed(2)}%`;
+                            resultsDiv.appendChild(line);
+                        });
+                    }
+                } else {
+                    displayMessage("Please upload an image first for AI prediction.", "red");
+                }
+            } catch (error) {
+                displayMessage("Error processing images. Please try again.", "red");
+                console.error('Error:', error);
+            }
+        }
+    </script>
+</body>
+</html>
